@@ -51,13 +51,13 @@ Extract the zip-archive anywhere you want.
 ## Configuration
 
 First thing you should do is to set up the profiles.
-1. Open in the menu: Debugging > Manage profiles
-2. For every 'target' to debug:
-  1. If the target is using a debugging-proxy, activate the checkbox "connect to DBGp" and enter the hostname (or IP) and port (usually 9001).
-  2. If the target is not on your computer, click on "Configure path mapping" and set up the _absolute_ path's to map from remote (target) to local (in your workspace)
-  3. (Optional) Enter the URL of the WWW-system to debug (if any).
-  4. Enter the port to listen for connections (usually 9000)
-  5. Define an IDE-Key for the profile. The IDE-Key must be unique among all profiles and all other IDE's using the same proxy.
+  1. Open in the menu: Debugging > Manage profiles
+  2. For every 'target' to debug:
+    1. If the target is using a debugging-proxy, activate the checkbox "connect to DBGp" and enter the hostname (or IP) and port (usually 9001).
+    2. If the target is not on your computer, click on "Configure path mapping" and set up the _absolute_ path's to map from remote (target) to local (in your workspace)
+    3. (Optional) Enter the URL of the WWW-system to debug (if any).
+    4. Enter the port to listen for connections (usually 9000)
+    5. Define an IDE-Key for the profile. The IDE-Key must be unique among all profiles and all other IDE's using the same proxy.
 
 ## Usage
 
