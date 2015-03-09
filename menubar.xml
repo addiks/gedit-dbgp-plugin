@@ -1,0 +1,17 @@
+<ui>
+    <menubar name="MenuBar">
+        <menu name="AddiksDbgpDebug" action="DebugAction">
+            <menuitem name="StartListening" action="StartListeningAction"/>
+            <menuitem name="StopListening"  action="StopListeningAction"/>
+            <separator/>
+            <menuitem name="ManageProfiles"       action="ManageProfilesAction"/>
+            <separator/>
+            <menuitem name="SessionStop"       action="SessionStopAction"/>
+            <menuitem name="SessionStepInto"   action="SessionStepIntoAction"/>
+            <menuitem name="SessionStepOver"   action="SessionStepOverAction"/>
+            <menuitem name="SessionStepOut"    action="SessionStepOutAction"/>
+            <menuitem name="SessionRun"        action="SessionRunAction"/>
+            <separator/>
+        </menu>
+    </menubar>
+</ui>

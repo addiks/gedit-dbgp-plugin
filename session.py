@@ -1,0 +1,654 @@
+
+from gi.repository import GLib, Gtk, Gdk
+from _thread import start_new_thread
+from gladehandler import GladeHandler
+from helpers import *
+import socket
+import base64
+import xml.etree.ElementTree as ElementTree
+addiksdbgp = __import__("addiks-dbgp")
+
+class DebugSession:
+    def __init__(self, plugin, clientSocket):
+        self._plugin  = plugin
+        self._client_socket = clientSocket
+        self._glade_builder = None
+        self._glade_handler = None
+        self._options = {
+            'fileuri':          None,
+            'language':         None,
+            'protocol_version': None,
+            'appid':            None,
+            'idekey':           None,
+            'engine':           None,
+            'author':           None,
+            'url':              None,
+            'copyright':        None,
+        }
+        self._features = {
+            'language_supports_threads': None,
+            'language_name':             None,
+            'language_version':          None,
+            'encoding':                  None,
+            'protocol_version':          None,
+            'supports_async':            None,
+            'data_encoding':             None,
+            'breakpoint_languages':      None,
+            'breakpoint_types':          None,
+            'multiple_sessions':         None,
+            'max_children':              None,
+            'max_data':                  None,
+            'max_depth':                 None,
+            'extended_properties':       None,
+        }
+        self._types = []
+        self._status = 'starting'
+        self._transaction_id_counter = 1
+        self._custom_watches = []
+        self._expanded_watches = []
+        self._path_mapping = None
+        self._prepared_stack = []
+
+    def init(self):
+
+#<?xml version="1.0" encoding="iso-8859-1"?>
+#<init xmlns="urn:debugger_protocol_v1" 
+#      xmlns:xdebug="http://xdebug.org/dbgp/xdebug" 
+#      fileuri="file:///usr/workspace/api.brille24.de/web/app.php" 
+#      language="PHP" 
+#      protocol_version="1.0" 
+#      appid="22855" 
+#      idekey="TEST">
+#  <engine version="2.2.3"><![CDATA[Xdebug]]></engine>
+#  <author><![CDATA[Derick Rethans]]></author>
+#  <url><![CDATA[http://xdebug.org]]></url>
+#  <copyright><![CDATA[Copyright (c) 2002-2013 by Derick Rethans]]></copyright>
+#</init>
+
+        initXml = self.__read_xml_packet()
+        
+        self._options.update(initXml.attrib)
+
+        profileManager = self._plugin.get_profile_manager()
+
+        self._path_mapping = None
+        for profileName in profileManager.get_profiles():
+            profile = profileManager.get_profile(profileName)
+            if profile['dbgp_ide_key'] == initXml.attrib['idekey']:
+                self._path_mapping = profileManager.get_pathmapping_manager(profileName)
+                break
+
+        for childXml in initXml:
+            self._options[childXml.tag] = childXml.text
+
+        for feature_name in self._features:
+            if self._features[feature_name] != None:
+                self.__send_command("feature_set", ['-n '+feature_name, '-v '+str(self._features[feature_name])])
+
+        feature_names = self._features.keys()
+        for feature_name in feature_names:
+            featureXml = self.__send_command("feature_get", ['-n '+feature_name])
+            if featureXml.attrib['supported'] == '1':
+                self._features[feature_name] = featureXml.text
+            else:
+                self._features[feature_name] = None
+
+        typesXml = self.__send_command("typemap_get")
+        for mapXml in typesXml:
+            xsiType = None
+            if 'xsi:type' in mapXml.attrib:
+                xsiType = mapXml.attrib['xsi:type']
+            self._types.append([mapXml.attrib['name'], mapXml.attrib['type'], xsiType])
+
+        breakpoints = addiksdbgp.AddiksDBGPApp.get().get_all_breakpoints()
+        for filePath in breakpoints:
+            for line in breakpoints[filePath]:
+                self.set_breakpoint({
+                    'type':     'line',
+                    'filename': filePath,
+                    'lineno':   line,
+                })
+
+        self.__send_command("step_into")
+        GLib.idle_add(self.__show_window)
+
+    def __show_window(self):
+        builder = self._getGladeBuilder()
+        window = builder.get_object("windowSession")
+        window.set_title("Debug-session: " + self._options['idekey']);
+     #   window.set_keep_above(True)
+        window.show_all()
+        start_new_thread(self.__after_show_window, ())
+
+    def __after_show_window(self):
+        self.run()
+        self.__update_view(True)
+
+    def close(self):
+        GLib.idle_add(self.__close)
+
+    def __close(self):
+        builder = self._getGladeBuilder()
+        window = builder.get_object("windowSession")
+        window.hide()
+
+    def mapRemoteToLocalPath(self, remotePath):
+        if self._path_mapping != None:
+            return self._path_mapping.mapRemoteToLocal(remotePath)
+        return remotePath
+
+    def add_watch(self, definition):
+        if definition not in self._custom_watches:
+            self._custom_watches.append(definition)
+            self.__update_view()
+
+    def remove_watch(self, definition):
+        self._custom_watches.remove(definition)
+        self.__update_view()
+    
+    def clear_watches(self):
+        self._custom_watches = []
+        self._expanded_watches = []
+        self.__update_view()
+
+    def get_watches(self):
+        return self._custom_watches
+
+    def get_types(self):
+        return self._types
+
+    def expand_watch(self, fullName):
+        if fullName not in self._expanded_watches:
+            self._expanded_watches.append(fullName)
+            self.__update_view()
+
+    def collapse_watch(self, fullName):
+        if fullName in self._expanded_watches:
+            self._expanded_watches.remove(fullName)
+            self.__update_view()
+        
+    def __hideWindow(self):
+        builder = self._getGladeBuilder()
+        window = builder.get_object("windowSession")
+        window.hide()
+        
+    ### COMMANDS
+
+    def run(self):
+        try:
+            responseXml = self.__send_command("run")
+            self._status = responseXml.attrib['status']
+            self.__update_view(True)
+            if self._status == "stopping":
+                self.stop()
+        except BrokenPipeError:
+            GLib.idle_add(self.__hideWindow)
+            addiksdbgp.AddiksDBGPApp.get().remove_session(self)
+
+    def step_into(self):
+        try:
+            responseXml = self.__send_command("step_into")
+            self._status = responseXml.attrib['status']
+            self.__update_view(True)
+            if self._status == "stopping":
+                self.stop()
+        except BrokenPipeError:
+            GLib.idle_add(self.__hideWindow)
+            addiksdbgp.AddiksDBGPApp.get().remove_session(self)
+
+    def step_over(self):
+        try:
+            responseXml = self.__send_command("step_over")
+            self._status = responseXml.attrib['status']
+            self.__update_view(True)
+            if self._status == "stopping":
+                self.stop()
+        except BrokenPipeError:
+            GLib.idle_add(self.__hideWindow)
+            addiksdbgp.AddiksDBGPApp.get().remove_session(self)
+
+    def step_out(self):
+        try:
+            responseXml = self.__send_command("step_out")
+            self._status = responseXml.attrib['status']
+            self.__update_view(True)
+            if self._status == "stopping":
+                self.stop()
+        except BrokenPipeError:
+            GLib.idle_add(self.__hideWindow)
+            addiksdbgp.AddiksDBGPApp.get().remove_session(self)
+
+    def stop(self):
+        try:
+            responseXml = self.__send_command("stop")
+            self._status = responseXml.attrib['status']
+            self._client_socket.close()
+            self.__update_view()
+            GLib.idle_add(self.__hideWindow)
+            addiksdbgp.AddiksDBGPApp.get().remove_session(self)
+        except BrokenPipeError:
+            GLib.idle_add(self.__hideWindow)
+            addiksdbgp.AddiksDBGPApp.get().remove_session(self)
+
+    def set_breakpoint(self, input_options={}):
+        arguments, expression = self.__get_breakpoint_arguments(input_options)
+        responseXml = self.__send_command("breakpoint_set", arguments, expression)
+        
+    def list_breakpoints(self):
+        responseXml = self.__send_command("breakpoint_list")
+        breakpoints = {}
+        for breakpointXml in responseXml:
+            options = breakpointXml.attrib
+            if len(breakpointXml)>0:
+                options['expression'] = breakpointXml[0].text
+            else:
+                options['expression'] = None
+            breakpoints[options['id']] = options
+        return breakpoints
+
+    def get_breakpoint(self, breakpoint_id):
+        responseXml = self.__send_command("breakpoint_get", ['-d '+breakpoint_id])
+        breakpoints = {}
+        for breakpointXml in responseXml:
+            options = breakpointXml.attrib
+            options['expression'] = breakpointXml[0].text
+            breakpoints[options['id']] = options
+        return breakpoints[0]
+
+    def remove_breakpoint_by_file_line(self, filePath, line):
+        breakpoints = self.list_breakpoints()
+        if self._path_mapping != None:
+            filePath = self._path_mapping.mapLocalToRemote(filePath)
+        for breakpointId in breakpoints:
+            breakpoint = breakpoints[breakpointId]
+            if breakpoint['filename'] == "file://"+filePath and int(breakpoint['lineno']) == line:
+                self.remove_breakpoint(breakpointId)
+
+    def remove_breakpoint(self, breakpoint_id):
+        responseXml = self.__send_command("breakpoint_remove", ['-d '+breakpoint_id])
+
+    def update_breakpoint(self, breakpoint_id, input_options={}):
+        arguments, expression = self.__get_breakpoint_arguments(input_options)
+        arguments.append("-d "+breakpoint_id)
+        responseXml = self.__send_command("breakpoint_update", arguments, expression)
+
+    def get_property(self, fullName):
+        responseXml = self.__send_command("property_get", ['-n '+fullName])
+        if len(responseXml)>0:
+            return responseXml[0]
+
+    def set_property(self, fullName, typeName, newValue):
+        responseXml = self.__send_command("property_set", ['-n '+fullName, '-t '+typeName, '-l {{#DATALENGTH#}}'], newValue)
+        self.__update_view()
+
+    def get_max_stack_depth(self):
+        responseXml = self.__send_command("stack-depth")
+        return responseXml.attrib['depth']
+
+    def get_stack(self, depth=None, glib_idle_add=None):
+        #see: http://xdebug.org/docs-dbgp.php#id50
+        arguments = []
+        if depth != None:
+            arguments.append("-d "+depth)
+        stack = []
+        if self._status in ['running', 'break']:
+            responseXml = self.__send_command("stack_get")
+            for stackXml in responseXml:
+                if stackXml.tag == "error":
+                    break
+                stack.append(stackXml.attrib)
+            if len(stack)>0 and 'level' in stack[0]:
+                stack.sort(key=lambda entry: entry['level'], reverse=True)
+        if glib_idle_add != None:
+            GLib.idle_add(glib_idle_add, stack)
+        return stack
+
+    def get_context_names(self, depth=None):
+        arguments = []
+        if depth != None:
+            arguments.append("-d "+depth)
+        names = {}
+        if self._status in ['running', 'break']:
+            responseXml = self.__send_command("context_names", arguments)
+            for contextXml in responseXml:
+                names[contextXml.attrib['name']] = contextXml.attrib['id']
+        return names
+
+    def get_context(self, context_name_id, depth=None):
+        #see: http://xdebug.org/docs-dbgp.php#id53
+        responseXml = None
+        if self._status in ['running', 'break']:
+            arguments = ["-c "+context_name_id]
+            if depth != None:
+                arguments.append("-d "+depth)
+
+            responseXml = self.__send_command("context_get", arguments)
+        return responseXml
+
+    def eval_expression(self, expression):
+        return self.__send_command("eval", [], expression)
+
+    ### HELPERS
+
+    def get_prepared_stack(self):
+        return self._prepared_stack
+
+    def __update_view(self, openTopFile=False):
+
+        try:
+
+            ### CLEANUP
+
+            userInterface = self._getGladeHandler()
+            userInterface.clearStack()
+            userInterface.clearWatches()
+
+            if self._status in ['stopping', 'stopped']:
+                self._prepared_stack = []
+            else:
+                self._prepared_stack = self.get_stack()
+
+            for view in addiksdbgp.AddiksDBGPApp.get().get_all_views():
+                GLib.idle_add(view.update_stack_marks)
+
+            if self._status in ['stopping', 'stopped']:
+                return
+
+            ### STACK-TRACE
+
+            topStackFilepath = None
+            topStackLineNr = 0
+            for stack in self._prepared_stack:
+
+                if self._path_mapping != None:
+                    stack['filename'] = self._path_mapping.mapRemoteToLocal(stack['filename'])
+
+                if int(stack['level']) == 0:
+                    topStackFilepath = stack['filename']
+                    topStackLineNr = int(stack["lineno"])
+
+                where = ""
+                if "where" in stack:
+                    where = stack["where"]
+
+                line = stack["lineno"]
+
+                filepath = stack["filename"]
+                filename = stack["filename"].split("/")[-1]
+
+                userInterface.addStackRow(filepath, line, where)
+
+            if openTopFile and topStackFilepath != None:
+                GLib.idle_add(self.open_uri_resouce, topStackFilepath, topStackLineNr)
+                 
+            ### WATCHES
+       
+            expandFullNames = []
+
+            for definition in self._custom_watches:
+                responseXml = self.eval_expression(definition)
+                if len(responseXml) > 1:
+                    userInterface.addWatchRow(definition, definition, "array")
+                    index = 0
+                    for propertyXml in responseXml:
+
+                        if "fullname" not in propertyXml.attrib and "name" in propertyXml.attrib:
+                            propertyXml.attrib["fullname"] = propertyXml.attrib["name"]
+                        if propertyXml.attrib['fullname'] in self._expanded_watches:
+                            expandFullNames.append(propertyXml.attrib['fullname'])
+                            propertyXml = self.get_property(propertyXml.attrib['fullname'])
+
+                        fullName = definition+"["+str(index)+"]"
+                        userInterface.addWatchRow(fullName, str(index), "array")
+                        userInterface.setWatchRowValue(fullName, self.__get_value_by_propertyXml(propertyXml, fullName, expandFullNames))
+
+                        index += 1
+
+                elif len(responseXml) == 1:
+                    propertyXml = responseXml[0]
+                    userInterface.addWatchRow(definition, definition)
+                    userInterface.setWatchRowValue(definition, self.__get_value_by_propertyXml(propertyXml, definition, expandFullNames))
+                    
+
+            writtenFullNames = []
+            for contextNameId in self.get_context_names():
+                contextXml = self.get_context(contextNameId)
+
+                for propertyXml in contextXml:
+                    if "fullname" not in propertyXml.attrib and "name" in propertyXml.attrib:
+                        propertyXml.attrib["fullname"] = propertyXml.attrib["name"]
+                    if propertyXml.attrib['fullname'] not in writtenFullNames:
+
+                        if propertyXml.attrib['fullname'] in self._expanded_watches:
+                            expandFullNames.append(propertyXml.attrib['fullname'])
+                            propertyXml = self.get_property(propertyXml.attrib['fullname'])
+
+                        fullName = propertyXml.attrib['fullname']
+                        userInterface.addWatchRow(fullName, propertyXml.attrib['name'])
+                        userInterface.setWatchRowValue(fullName, self.__get_value_by_propertyXml(propertyXml, fullName, expandFullNames))
+                        writtenFullNames.append(propertyXml.attrib['fullname'])
+
+            for fullName in expandFullNames:
+                userInterface.expandWatchRow(fullName)
+
+        except BrokenPipeError:
+            GLib.idle_add(self.__hideWindow)
+            addiksdbgp.AddiksDBGPApp.get().remove_session(self)
+
+    def __get_value_by_propertyXml(self, propertyXml, parentFullName, expandFullNames=[]):
+
+        userInterface = self._getGladeHandler()
+
+        tagName = propertyXml.tag
+
+        if "}" in tagName:
+            tagName = tagName.split('}', 1)[1]
+
+        if tagName == "error":
+            return propertyXml[0].text
+
+        dataType = propertyXml.attrib['type']
+
+        if dataType == 'uninitialized':
+            return "{uninitialized}"
+
+        elif dataType == 'object':
+            data = {}
+            if len(propertyXml)>0:
+                for childPropertyXml in propertyXml:
+
+                    name = childPropertyXml.attrib['name']
+                    if "fullname" not in childPropertyXml.attrib and "name" in childPropertyXml.attrib:
+                        childPropertyXml.attrib["fullname"] = childPropertyXml.attrib["name"]
+                    if childPropertyXml.attrib['fullname'] in self._expanded_watches:
+                        expandFullNames.append(childPropertyXml.attrib['fullname'])
+                        childPropertyXml = self.get_property(childPropertyXml.attrib['fullname'])
+
+                    fullName = childPropertyXml.attrib['fullname']
+                    userInterface.addWatchRow(fullName, name, None, parentFullName)
+                    userInterface.setWatchRowValue(fullName, self.__get_value_by_propertyXml(childPropertyXml, fullName, expandFullNames))
+            else:
+                userInterface.addWatchRow(None, None, None, parentFullName)
+            return "object(" + propertyXml.attrib['numchildren'] + ") : " + propertyXml.attrib['classname']
+
+        elif dataType == 'array':
+            data = {}
+            if len(propertyXml)>0:
+                for childPropertyXml in propertyXml:
+
+                    name = childPropertyXml.attrib['name']
+                    if "fullname" not in childPropertyXml.attrib and "name" in childPropertyXml.attrib:
+                        childPropertyXml.attrib["fullname"] = childPropertyXml.attrib["name"]
+                    if childPropertyXml.attrib['fullname'] in self._expanded_watches:
+                        expandFullNames.append(childPropertyXml.attrib['fullname'])
+                        childPropertyXml = self.get_property(childPropertyXml.attrib['fullname'])
+
+                    fullName = childPropertyXml.attrib['fullname']
+                    userInterface.addWatchRow(fullName, name, None, parentFullName)
+                    userInterface.setWatchRowValue(fullName, self.__get_value_by_propertyXml(childPropertyXml, fullName, expandFullNames))
+            else:
+                userInterface.addWatchRow(None, None, None, parentFullName)
+            return "array(" + propertyXml.attrib['numchildren'] + ")"
+            
+        elif dataType in ['string', 'float', 'int', 'bool']:
+            if 'encoding' in propertyXml.attrib and propertyXml.attrib['encoding'] == "base64":
+                content = base64.b64decode(str(propertyXml.text))
+                if len(content) <= 0:
+                    content = ""
+                elif type(content) == bytes:
+                    try:
+                        content = content.decode("utf-8")
+                    except UnicodeDecodeError:
+                        content = "{charset-decoding-error while reading value}"
+                return content
+            else:
+                return propertyXml.text
+
+        elif dataType in ['resource', 'null']:
+            return "{"+dataType+"}"
+
+        return "{unknown type: '"+propertyXml.attrib['type']+"'}"
+
+    def open_uri_resouce(self, uri, line=None):
+
+        if uri[0:7] == 'file://':
+            filePath = uri[7:]
+            if self._path_mapping != None:
+                filePath = self._path_mapping.mapRemoteToLocal(filePath)
+            addiksdbgp.AddiksDBGPApp.get().open_window_file(filePath, line)
+
+    def __get_breakpoint_arguments(self, input_options={}):
+        options = {
+            'type':          "line", # line, call, return, exception, conditional, watch
+            'filename':      "",
+            'lineno':        1,
+            'state':         "enabled",
+            'function':      "", # function name for call or return
+            'temporary':     "0",
+            'hit_value':     "0",
+            'hit_condition': "",
+            'exception':     "",
+            'expression':    "",
+        }
+        options.update(input_options)
+
+        if options['type'] not in ['line', 'call', 'return', 'exception', 'condition', 'watch']:
+            raise Exception("Invalid breakpoint type '"+options['type']+"'!")
+
+        if len(options['filename'])>1:
+            if self._path_mapping != None:
+                options['filename'] = self._path_mapping.mapLocalToRemote(options['filename'])
+            if options['filename'][0:7] != "file://":
+                options['filename'] = "file://" + options['filename']
+
+        arguments = [
+            '-t ' + options['type'],
+        ]
+
+        expression = None
+
+        if options['state'] != 'enabled':
+            arguments.append('-s ' + options['state'])
+
+        if options['type'] in ['line', 'condition']:
+            arguments.append('-f ' + options['filename'])
+
+        if options['type'] == 'line':
+            arguments.append('-n ' + str(options['lineno']))
+
+        if options['type'] in ['call', 'return']:
+            arguments.append('-m ' + options['function'])
+
+        if options['type'] in ['exception']:
+            arguments.append('-x ' + options['exception'])
+        
+        if options['type'] in ['conditional', 'watch']:
+            expression = options['expression']
+
+        if options['hit_value'] != '0':
+            arguments.append('-h ' + options['hit_value'])
+            arguments.append('-o ' + options['hit_condition'])
+
+        if options['temporary'] != '0':
+            arguments.append('-r ' + options['temporary'])
+
+        return [arguments, expression]
+
+    def __send_command(self, command, arguments=[], data=None):
+        clientSocket = self._client_socket
+        transactionId = self._transaction_id_counter
+        self._transaction_id_counter += 1
+        argumentsString = ""
+        if(len(arguments)>0):
+            argumentsString = " "+(" ".join(arguments))
+        if command not in ["breakpoint_set"] and False:
+            dataString = " -- "
+        else:
+            dataString = ""
+        if data != None:
+            dataString = " -- " + base64.b64encode(data.encode("utf-8")).decode("utf-8")
+        argumentsString = argumentsString.replace("{{#DATALENGTH#}}", str(len(dataString)-4))
+        packet = command+" -i "+str(transactionId)+argumentsString+dataString+"\0"
+        print(">>> "+packet)
+        clientSocket.send(bytes(packet, 'UTF-8'))
+        return self.__read_xml_packet(transactionId)
+        
+    def __read_xml_packet(self, transactionId=None):
+        clientSocket = self._client_socket
+
+        packetBegin = clientSocket.recv(128).decode("utf-8")
+        
+        lengthString, xmlData = packetBegin.split('\0', 1)
+
+        pendingDataSize = int(lengthString) - len(xmlData)
+        while pendingDataSize > 0:
+            dataBlock = clientSocket.recv(pendingDataSize).decode("utf-8")
+            pendingDataSize -= len(dataBlock)
+            xmlData += dataBlock
+            
+        endingNullByte = clientSocket.recv(1)
+    
+        xmlData = xmlData.replace("\\n", "\n")
+        xmlData = xmlData.replace("\\x00", "")
+        xmlData = xmlData.replace("\0", "")
+
+        if xmlData[-1] == "'":
+            xmlData = xmlData[0:-1]
+
+        print("<<< ("+lengthString+"):"+xmlData+"\n")
+
+        root = ElementTree.fromstring(xmlData)
+
+        # make sure response and request are for the same transaction
+        if transactionId != None and 'transaction_id' in root.attrib: 
+            if transactionId != int(root.attrib['transaction_id']):
+                print("+++ Skipped packet because wrong transaction_id\n")
+                root = self.__read_xml_packet(transactionId)
+
+        if "status" in root.attrib:
+            self._status = root.attrib['status']
+
+        return root
+        
+    def _getGladeHandler(self):
+        if self._glade_handler == None:
+            self.__initGlade()
+        return self._glade_handler
+
+    def _getGladeBuilder(self):
+        if self._glade_builder == None:
+            self.__initGlade()
+        return self._glade_builder
+
+    def __initGlade(self):
+        self._glade_builder = Gtk.Builder()
+        self._glade_builder.add_from_file(os.path.dirname(__file__)+"/debugger.glade")
+        self._glade_handler = GladeHandler(self._plugin, self._glade_builder, session=self)
+        self._glade_builder.connect_signals(self._glade_handler)
+        
+
+
+
+
+
+

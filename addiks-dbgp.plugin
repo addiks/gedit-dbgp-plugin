@@ -1,0 +1,9 @@
+[Plugin]
+Loader=python3
+Module=addiks-dbgp
+IAge=3
+Name=Addiks - DBGp client (XDebug)
+Description=Allows gedit to act as a debugger using the DBGp protocol
+Authors=Gerrit Addiks <gerrit@addiks.de>
+Copyright=Copyright (C) 2015 Gerrit Addiks
+Website=https://github.com/addiks/gedit-dbgp-plugin
