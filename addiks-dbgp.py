@@ -222,10 +222,10 @@ class AddiksDBGPApp(GObject.Object, Gedit.AppActivatable):
                 pass
 
     def _acceptClient(self, clientSocket, address=None):
-        print("")
-        print(" ##############################")
-        print(" ### NEW DEBUGGER CONNECTED ###")
-        print(" ##############################")
+        #print("")
+        #print(" ##############################")
+        #print(" ### NEW DEBUGGER CONNECTED ###")
+        #print(" ##############################")
         session = DebugSession(self, clientSocket)
         self._active_sessions.append(session)
         session.init()
