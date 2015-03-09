@@ -604,7 +604,7 @@ class DebugSession:
             dataString = " -- " + base64.b64encode(data.encode("utf-8")).decode("utf-8")
         argumentsString = argumentsString.replace("{{#DATALENGTH#}}", str(len(dataString)-4))
         packet = command+" -i "+str(transactionId)+argumentsString+dataString+"\0"
-        print(">>> "+packet)
+        #print(">>> "+packet)
         clientSocket.send(bytes(packet, 'UTF-8'))
         return self.__read_xml_packet(transactionId)
         
@@ -630,14 +630,14 @@ class DebugSession:
         if xmlData[-1] == "'":
             xmlData = xmlData[0:-1]
 
-        print("<<< ("+lengthString+"):"+xmlData+"\n")
+        #print("<<< ("+lengthString+"):"+xmlData+"\n")
 
         root = ElementTree.fromstring(xmlData)
 
         # make sure response and request are for the same transaction
         if transactionId != None and 'transaction_id' in root.attrib: 
             if transactionId != int(root.attrib['transaction_id']):
-                print("+++ Skipped packet because wrong transaction_id\n")
+                #print("+++ Skipped packet because wrong transaction_id\n")
                 root = self.__read_xml_packet(transactionId)
 
         if "status" in root.attrib:
