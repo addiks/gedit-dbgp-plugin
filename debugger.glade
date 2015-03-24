@@ -40,6 +40,11 @@
     <property name="can_focus">False</property>
     <property name="stock">gtk-remove</property>
   </object>
+  <object class="GtkImage" id="imageRunToEnd">
+    <property name="visible">True</property>
+    <property name="can_focus">False</property>
+    <property name="stock">gtk-media-next</property>
+  </object>
   <object class="GtkImage" id="imageSessionRun">
     <property name="visible">True</property>
     <property name="can_focus">False</property>
@@ -78,6 +83,7 @@
   <object class="GtkImage" id="imageWatchesEdit">
     <property name="visible">True</property>
     <property name="can_focus">False</property>
+    <property name="margin_top">5</property>
     <property name="stock">gtk-edit</property>
   </object>
   <object class="GtkImage" id="imageWatchesRemove">
@@ -597,7 +603,7 @@
             <property name="visible">True</property>
             <property name="can_focus">False</property>
             <child>
-              <object class="GtkFixed" id="fixed1">
+              <object class="GtkFixed" id="fixedSessionButtonsLeft">
                 <property name="visible">True</property>
                 <property name="can_focus">False</property>
               </object>
@@ -688,14 +694,28 @@
               </packing>
             </child>
             <child>
-              <object class="GtkFixed" id="fixed2">
+              <object class="GtkButton" id="buttonRunToEnd">
+                <property name="visible">True</property>
+                <property name="can_focus">True</property>
+                <property name="receives_default">True</property>
+                <property name="image">imageRunToEnd</property>
+                <signal name="clicked" handler="onRunToEnd" swapped="no"/>
+              </object>
+              <packing>
+                <property name="expand">False</property>
+                <property name="fill">True</property>
+                <property name="position">6</property>
+              </packing>
+            </child>
+            <child>
+              <object class="GtkFixed" id="fixedSessionButtonsRight">
                 <property name="visible">True</property>
                 <property name="can_focus">False</property>
               </object>
               <packing>
                 <property name="expand">True</property>
                 <property name="fill">True</property>
-                <property name="position">6</property>
+                <property name="position">7</property>
               </packing>
             </child>
           </object>
@@ -832,6 +852,7 @@
                                 <property name="visible">True</property>
                                 <property name="can_focus">True</property>
                                 <property name="receives_default">True</property>
+                                <property name="tooltip_text" translatable="yes">Edit selected watch</property>
                                 <property name="image">imageWatchesEdit</property>
                                 <signal name="clicked" handler="onEditWatch" swapped="no"/>
                               </object>

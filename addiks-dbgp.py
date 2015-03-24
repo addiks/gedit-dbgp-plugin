@@ -290,12 +290,28 @@ class AddiksDBGPApp(GObject.Object, Gedit.AppActivatable):
         print(url)
         os.system("xdg-open '"+url+"'")
 
+    def _stopBrowser(self, url, ideKey):
+
+        if '?' in url:
+            url = url + "&"
+        else:
+            url = url + "?"
+
+        url = url + "XDEBUG_SESSION_STOP=" + ideKey
+        print(url)
+        os.system("xdg-open '"+url+"'")
+
     ### SESSION MANAGEMENT
 
     def session_run(self, foo=None):
         sessions = self.get_active_sessions()
         if len(sessions) > 0:
             sessions[0].run()
+
+    def session_run_to_end(self, foo=None):
+        sessions = self.get_active_sessions()
+        if len(sessions) > 0:
+            sessions[0].run(True)
 
     def session_step_into(self, foo=None):
         sessions = self.get_active_sessions()
@@ -537,6 +553,7 @@ class AddiksDBGPWindow(GObject.Object, Gedit.WindowActivatable):
             ['SessionStepOverAction',      "Step over",                           "F6",  AddiksDBGPApp.get().session_step_over],
             ['SessionStepOutAction',       "Step out",                            "F7",  AddiksDBGPApp.get().session_step_out],
             ['SessionRunAction',           "Run",                                 "F8",  AddiksDBGPApp.get().session_run],
+            ['SessionRunToEndAction',      "Run to end (ignore breakpoints)",     "F9",  AddiksDBGPApp.get().session_run_to_end],
         ]
 
         self._actions = Gtk.ActionGroup("AddiksDBGPMenuActions")
@@ -547,12 +564,27 @@ class AddiksDBGPWindow(GObject.Object, Gedit.WindowActivatable):
         self._ui_merge_id = self._ui_manager.add_ui_from_string(file_get_contents(plugin_path + "/menubar.xml"))
         
         debugMenu = self._ui_manager.get_widget("/ui/MenuBar/AddiksDbgpDebug").get_submenu()
+
         for profileName in AddiksDBGPApp.get().get_profile_manager().get_profiles():
             
             menuItem = Gtk.MenuItem()
             menuItem._addiks_profile_name = profileName
-            menuItem.set_label("Start debugging: "+profileName)
+            menuItem.set_label("Send start-debugging request to: "+profileName)
             menuItem.connect("activate", self.on_run_session_per_menu)
+            menuItem.show()
+
+            debugMenu.attach(menuItem, 0, 1, 0, 1)
+
+        seperator = Gtk.SeparatorMenuItem()
+        seperator.show()
+        debugMenu.attach(seperator, 0, 1, 0, 1)
+
+        for profileName in AddiksDBGPApp.get().get_profile_manager().get_profiles():
+            
+            menuItem = Gtk.MenuItem()
+            menuItem._addiks_profile_name = profileName
+            menuItem.set_label("Send stop-debugging request to: "+profileName)
+            menuItem.connect("activate", self.on_stop_session_per_menu)
             menuItem.show()
 
             debugMenu.attach(menuItem, 0, 1, 0, 1)
@@ -565,6 +597,11 @@ class AddiksDBGPWindow(GObject.Object, Gedit.WindowActivatable):
         profileName = menuItem._addiks_profile_name
         profile = AddiksDBGPApp.get().get_profile_manager().get_profile()
         AddiksDBGPApp.get()._runBrowser(profile['url'], profile['dbgp_ide_key'])
+
+    def on_stop_session_per_menu(self, menuItem=None):
+        profileName = menuItem._addiks_profile_name
+        profile = AddiksDBGPApp.get().get_profile_manager().get_profile()
+        AddiksDBGPApp.get()._stopBrowser(profile['url'], profile['dbgp_ide_key'])
 
     def do_deactivate(self):
         AddiksDBGPApp.get().unregister_window(self)

@@ -11,6 +11,7 @@
             <menuitem name="SessionStepOver"   action="SessionStepOverAction"/>
             <menuitem name="SessionStepOut"    action="SessionStepOutAction"/>
             <menuitem name="SessionRun"        action="SessionRunAction"/>
+            <menuitem name="SessionRunToEnd"   action="SessionRunToEndAction"/>
             <separator/>
         </menu>
     </menubar>

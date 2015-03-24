@@ -101,6 +101,9 @@ class GladeHandler:
     def onRun(self, button=None):
         self._session.run()
 
+    def onRunToEnd(self, button=None):
+        self._session.run(True)
+
     def onSessionStop(self, button=None):
         self._session.stop()
 

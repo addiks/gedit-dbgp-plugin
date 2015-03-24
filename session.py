@@ -130,7 +130,7 @@ class DebugSession:
     def __show_window(self):
         builder = self._getGladeBuilder()
         window = builder.get_object("windowSession")
-        window.set_title("Debug-session: " + self._options['idekey']);
+        window.set_title("Running process: " + self._options['idekey']);
      #   window.set_keep_above(True)
         window.show_all()
         start_new_thread(self.__after_show_window, ())
@@ -189,8 +189,12 @@ class DebugSession:
         
     ### COMMANDS
 
-    def run(self):
+    def run(self, clearBreakpoints=False):
         try:
+            if clearBreakpoints:
+                breakpoints = self.list_breakpoints()
+                for breakpointId in breakpoints:
+                    self.remove_breakpoint(breakpointId)
             responseXml = self.__send_command("run")
             self._status = responseXml.attrib['status']
             self.__update_view(True)
