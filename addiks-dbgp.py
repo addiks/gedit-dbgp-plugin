@@ -609,6 +609,9 @@ class AddiksDBGPWindow(GObject.Object, Gedit.WindowActivatable):
     def do_update_state(self):
         pass
 
+    def get_accel_group(self):
+        return self._ui_manager.get_accel_group()
+
     def set_listen_menu_set_started(self):
         actionStart = self._actions.get_action("StartListeningAction")
         actionStop  = self._actions.get_action("StopListeningAction")

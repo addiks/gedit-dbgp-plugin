@@ -132,6 +132,8 @@ class DebugSession:
         window = builder.get_object("windowSession")
         window.set_title("Running process: " + self._options['idekey']);
      #   window.set_keep_above(True)
+        accelGroup = addiksdbgp.AddiksDBGPApp.get().get_all_windows()[0].get_accel_group()
+        window.add_accel_group(accelGroup)
         window.show_all()
         start_new_thread(self.__after_show_window, ())
 
