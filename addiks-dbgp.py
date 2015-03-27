@@ -565,6 +565,15 @@ class AddiksDBGPWindow(GObject.Object, Gedit.WindowActivatable):
         
         debugMenu = self._ui_manager.get_widget("/ui/MenuBar/AddiksDbgpDebug").get_submenu()
 
+        xdebugMenuItem = Gtk.MenuItem()
+        xdebugMenuItem.set_label("XDebug / HTTP")
+        xdebugMenuItem.show()
+
+        debugMenu.attach(xdebugMenuItem, 0, 1, 0, 1)
+
+        xdebugMenu = Gtk.Menu()
+        xdebugMenuItem.set_submenu(xdebugMenu)
+
         for profileName in AddiksDBGPApp.get().get_profile_manager().get_profiles():
             
             menuItem = Gtk.MenuItem()
@@ -573,11 +582,11 @@ class AddiksDBGPWindow(GObject.Object, Gedit.WindowActivatable):
             menuItem.connect("activate", self.on_run_session_per_menu)
             menuItem.show()
 
-            debugMenu.attach(menuItem, 0, 1, 0, 1)
+            xdebugMenu.attach(menuItem, 0, 1, 0, 1)
 
         seperator = Gtk.SeparatorMenuItem()
         seperator.show()
-        debugMenu.attach(seperator, 0, 1, 0, 1)
+        xdebugMenu.attach(seperator, 0, 1, 0, 1)
 
         for profileName in AddiksDBGPApp.get().get_profile_manager().get_profiles():
             
@@ -587,7 +596,7 @@ class AddiksDBGPWindow(GObject.Object, Gedit.WindowActivatable):
             menuItem.connect("activate", self.on_stop_session_per_menu)
             menuItem.show()
 
-            debugMenu.attach(menuItem, 0, 1, 0, 1)
+            xdebugMenu.attach(menuItem, 0, 1, 0, 1)
 
         self._ui_manager.ensure_update()
 
