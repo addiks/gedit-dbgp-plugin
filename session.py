@@ -20,6 +20,7 @@ from gladehandler import GladeHandler
 from helpers import *
 import socket
 import base64
+import time
 import xml.etree.ElementTree as ElementTree
 addiksdbgp = __import__("addiks-dbgp")
 
@@ -27,6 +28,7 @@ class DebugSession:
     def __init__(self, plugin, clientSocket):
         self._plugin  = plugin
         self._client_socket = clientSocket
+        self._is_waiting_for_server = False
         self._glade_builder = None
         self._glade_handler = None
         self._options = {
@@ -611,8 +613,17 @@ class DebugSession:
         argumentsString = argumentsString.replace("{{#DATALENGTH#}}", str(len(dataString)-4))
         packet = command+" -i "+str(transactionId)+argumentsString+dataString+"\0"
         #print(">>> "+packet)
+
+        # there is already a command being executed,
+        # wait until it is finished
+        while self._is_waiting_for_server:
+            time.sleep(1)
+
+        self._is_waiting_for_server = True
         clientSocket.send(bytes(packet, 'UTF-8'))
-        return self.__read_xml_packet(transactionId)
+        xml = self.__read_xml_packet(transactionId)
+        self._is_waiting_for_server = False
+        return xml
         
     def __read_xml_packet(self, transactionId=None):
         clientSocket = self._client_socket

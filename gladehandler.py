@@ -17,6 +17,7 @@
 from gi.repository import GLib, Gtk, Gdk
 from helpers import *
 from os.path import expanduser
+from _thread import start_new_thread
 import traceback
 
 class GladeHandler:
@@ -99,22 +100,22 @@ class GladeHandler:
     ### SESSION
 
     def onRun(self, button=None):
-        self._session.run()
+        start_new_thread(self._session.run, ())
 
     def onRunToEnd(self, button=None):
-        self._session.run(True)
+        start_new_thread(self._session.run, (True, ))
 
     def onSessionStop(self, button=None):
-        self._session.stop()
+        start_new_thread(self._session.stop, ())
 
     def onStepInto(self, button=None):
-        self._session.step_into()
+        start_new_thread(self._session.step_into, ())
 
     def onStepOver(self, button=None):
-        self._session.step_over()
+        start_new_thread(self._session.step_over, ())
 
     def onStepOut(self, button=None):
-        self._session.step_out()
+        start_new_thread(self._session.step_out, ())
 
     def onClearWatches(self, button=None):
         self._session.clear_watches()
