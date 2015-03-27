@@ -190,16 +190,19 @@ class GladeHandler:
             typeComboBox.add_attribute(cellRenderer, "text", 0)
             typeComboBox.set_active(0)
 
-            userEntry = Gtk.Entry()
-            userEntry.set_text(value)
+            userEntryTextBuffer = Gtk.TextBuffer()
+            userEntryTextBuffer.set_text(value)
 
-            dialogBox.pack_start(labelFullName, False, False, 0)
-            dialogBox.pack_start(typeComboBox,  False, False, 0)
-            dialogBox.pack_start(userEntry,     False, False, 0)
+            userEntryTextView = Gtk.TextView()
+            userEntryTextView.set_buffer(userEntryTextBuffer)
+
+            dialogBox.pack_start(labelFullName,     False, False, 0)
+            dialogBox.pack_start(typeComboBox,      False, False, 0)
+            dialogBox.pack_start(userEntryTextView, False, False, 0)
 
             dialog.show_all()
             response = dialog.run()
-            newValue = userEntry.get_text()
+            newValue = userEntryTextBuffer.get_text()
             newType = types[typeComboBox.get_active()]
             dialog.destroy()
 

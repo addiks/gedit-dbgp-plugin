@@ -70,7 +70,7 @@ Click on the gutter where you want to add breakpoints (just above where you want
 
 ### HTTP over XDebug
 
-To start the debugging-session, simple open the menu 'Debugging' and click on the "Start debugging: my-profile-name".
+To start the debugging-session, simple open the menu "Debugging" > "XDebug / HTTP" "Send start-debugging request to: my-profile-name".
 If everything (including the server *) is properly configured, the debug session should start right away.
 
 (*: Make sure xdebug in apache-php is propery configured to connect either directly to gedit or to a proxy that is configured in gedit.)

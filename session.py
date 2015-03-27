@@ -513,7 +513,7 @@ class DebugSession:
                 userInterface.addWatchRow(None, None, None, parentFullName)
             return "array(" + propertyXml.attrib['numchildren'] + ")"
             
-        elif dataType in ['string', 'float', 'int', 'bool']:
+        elif dataType in ['string', 'float', 'int']:
             if 'encoding' in propertyXml.attrib and propertyXml.attrib['encoding'] == "base64":
                 content = base64.b64decode(str(propertyXml.text))
                 if len(content) <= 0:
@@ -526,6 +526,12 @@ class DebugSession:
                 return content
             else:
                 return propertyXml.text
+
+        elif dataType in ['bool']:
+            if propertyXml.text == '1':
+                return 'true'
+            else:
+                return 'false'
 
         elif dataType in ['resource', 'null']:
             return "{"+dataType+"}"
