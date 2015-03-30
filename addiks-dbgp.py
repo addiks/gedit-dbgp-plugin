@@ -62,9 +62,9 @@ class AddiksDBGPApp(GObject.Object, Gedit.AppActivatable):
                 viewFilePath = document.get_location().get_path()
                 if filePath == viewFilePath:
                     found = True
-                    window = self.get_window_by_view(view.view)
-                    tab = window.window.get_tab_from_location(document.get_location())
-                    window.window.set_active_tab(tab)
+                    window = self.get_window_by_view(view.view).window
+                    tab = window.get_tab_from_location(document.get_location())
+                    window.set_active_tab(tab)
         
         location = Gio.File.new_for_path(filePath)
 
@@ -88,7 +88,13 @@ class AddiksDBGPApp(GObject.Object, Gedit.AppActivatable):
         textIter.set_line_offset(0)
         view.scroll_to_iter(textIter, 0.3, False, 0.0, 0.5)
 
+        start_new_thread(self.delayed_present, (window, ))
+
         return tab
+
+    def delayed_present(self, window):
+        sleep(0.01)
+        GLib.idle_add(window.present)
 
     def show_profile_manager(self, foo=None):
         self.get_profile_manager().show()
