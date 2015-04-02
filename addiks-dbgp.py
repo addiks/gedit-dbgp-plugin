@@ -607,7 +607,10 @@ class AddiksDBGPWindow(GObject.Object, Gedit.WindowActivatable):
 
         self._ui_manager.ensure_update()
 
-        self.set_listen_menu_set_stopped()
+        if AddiksDBGPApp.get().does_listen():
+            self.set_listen_menu_set_started()
+        else:
+            self.set_listen_menu_set_stopped()
 
     def on_run_session_per_menu(self, menuItem=None):
         profileName = menuItem._addiks_profile_name
