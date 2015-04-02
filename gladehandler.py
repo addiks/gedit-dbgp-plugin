@@ -237,6 +237,31 @@ class GladeHandler:
 
         self._session.open_uri_resouce(uri, int(lineNr))
 
+    def getWatchesScrollPosition(self):
+        builder = self._builder
+        scrolledWindow = builder.get_object("scrolledwindowWatches")
+
+        top  = scrolledWindow.get_vadjustment().get_value()
+        left = scrolledWindow.get_hadjustment().get_value()
+
+        return [top, left]
+
+    def setWatchesScrollPosition(self, positions):
+        GLib.idle_add(self._do_setWatchesScrollPosition, positions)
+
+    def _do_setWatchesScrollPosition(self, positions):
+        builder = self._builder
+        scrolledWindow = builder.get_object("scrolledwindowWatches")
+
+        top, left = positions
+        print(top)
+        print(left)
+        print(scrolledWindow.get_vadjustment().get_upper())
+        print(scrolledWindow.get_vadjustment().get_lower())
+
+        scrolledWindow.get_vadjustment().set_value(top)
+        scrolledWindow.get_hadjustment().set_value(left)
+
     def clearWatches(self):
         GLib.idle_add(self._do_clearWatches)
 

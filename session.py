@@ -363,6 +363,7 @@ class DebugSession:
             ### CLEANUP
 
             userInterface = self._getGladeHandler()
+            scroll = userInterface.getWatchesScrollPosition()
             userInterface.clearStack()
             userInterface.clearWatches()
 
@@ -453,6 +454,9 @@ class DebugSession:
 
             for fullName in expandFullNames:
                 userInterface.expandWatchRow(fullName)
+
+            print(scroll)
+            userInterface.setWatchesScrollPosition(scroll)
 
         except BrokenPipeError:
             GLib.idle_add(self.__hideWindow)

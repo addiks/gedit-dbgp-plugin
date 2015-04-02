@@ -23,6 +23,7 @@ from gladehandler import GladeHandler
 import os
 import random
 import time
+from time import sleep
 import subprocess
 import socket
 from os.path import expanduser
@@ -55,6 +56,7 @@ class AddiksDBGPApp(GObject.Object, Gedit.AppActivatable):
 
         found = False
         tab = None
+        window = None
 
         for view in self.get_all_views():
             document = view.view.get_buffer()
@@ -70,11 +72,10 @@ class AddiksDBGPApp(GObject.Object, Gedit.AppActivatable):
 
         if not found:
 
-        ### TODO: comment in again when the no-tab-plugin is there
-        #    for window in self.get_all_windows():
-        #        tab = window.create_tab_from_location(location, None, line, column, False, True)
-        #        found = True
-        #        break
+            for window in self.get_all_windows():
+                tab = window.create_tab_from_location(location, None, line, column, False, True)
+                found = True
+                break
                 
             if not found:
                 window = self.app.create_window()
