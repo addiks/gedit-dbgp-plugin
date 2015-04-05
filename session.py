@@ -140,7 +140,8 @@ class DebugSession:
         start_new_thread(self.__after_show_window, ())
 
     def __after_show_window(self):
-        self.run()
+        if not self.is_in_breakpoint():
+            self.run()
         self.__update_view(True)
 
     def close(self):
@@ -150,6 +151,19 @@ class DebugSession:
         builder = self._getGladeBuilder()
         window = builder.get_object("windowSession")
         window.hide()
+
+    def is_in_breakpoint(self):
+        stack = self.get_stack()[-1]
+        if self._path_mapping != None:
+            stack['filename'] = self._path_mapping.mapRemoteToLocal(stack['filename'])
+        if stack['filename'][0:7] == 'file://':
+            stack['filename'] = stack['filename'][7:]
+        breakpoints = addiksdbgp.AddiksDBGPApp.get().get_all_breakpoints()
+        for filePath in breakpoints:
+            for line in breakpoints[filePath]:
+                if stack['filename'] == filePath and int(stack["lineno"]) == line:
+                    return True
+        return False
 
     def mapRemoteToLocalPath(self, remotePath):
         if self._path_mapping != None:
@@ -455,7 +469,6 @@ class DebugSession:
             for fullName in expandFullNames:
                 userInterface.expandWatchRow(fullName)
 
-            print(scroll)
             userInterface.setWatchesScrollPosition(scroll)
 
         except BrokenPipeError:

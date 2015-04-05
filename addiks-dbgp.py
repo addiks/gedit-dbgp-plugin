@@ -294,7 +294,7 @@ class AddiksDBGPApp(GObject.Object, Gedit.AppActivatable):
             url = url + "?"
 
         url = url + "XDEBUG_SESSION_START=" + ideKey
-        print(url)
+
         os.system("xdg-open '"+url+"'")
 
     def _stopBrowser(self, url, ideKey):
@@ -305,7 +305,7 @@ class AddiksDBGPApp(GObject.Object, Gedit.AppActivatable):
             url = url + "?"
 
         url = url + "XDEBUG_SESSION_STOP=" + ideKey
-        print(url)
+
         os.system("xdg-open '"+url+"'")
 
     ### SESSION MANAGEMENT

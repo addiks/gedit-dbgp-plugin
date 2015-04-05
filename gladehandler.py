@@ -254,10 +254,6 @@ class GladeHandler:
         scrolledWindow = builder.get_object("scrolledwindowWatches")
 
         top, left = positions
-        print(top)
-        print(left)
-        print(scrolledWindow.get_vadjustment().get_upper())
-        print(scrolledWindow.get_vadjustment().get_lower())
 
         scrolledWindow.get_vadjustment().set_value(top)
         scrolledWindow.get_hadjustment().set_value(left)
