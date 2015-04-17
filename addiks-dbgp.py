@@ -73,6 +73,7 @@ class AddiksDBGPApp(GObject.Object, Gedit.AppActivatable):
         if not found:
 
             for window in self.get_all_windows():
+                window = window.window
                 tab = window.create_tab_from_location(location, None, line, column, False, True)
                 found = True
                 break
