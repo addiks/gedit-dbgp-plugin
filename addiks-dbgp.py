@@ -230,10 +230,6 @@ class AddiksDBGPApp(GObject.Object, Gedit.AppActivatable):
                 pass
 
     def _acceptClient(self, clientSocket, address=None):
-        #print("")
-        #print(" ##############################")
-        #print(" ### NEW DEBUGGER CONNECTED ###")
-        #print(" ##############################")
         session = DebugSession(self, clientSocket)
         self._active_sessions.append(session)
         session.init()
@@ -420,17 +416,60 @@ class AddiksDBGPView(GObject.Object, Gedit.ViewActivatable):
         self._gutter_renderer = None
         self._gutter_breakpoint_icon = None
         self._gutter_empty_pixbuf = None
+        self.__drawArea = None
 
     def do_activate(self):
         AddiksDBGPApp.get().register_view(self)
 
         document = self.view.get_buffer()
 
+        window = AddiksDBGPApp.get().get_window_by_view(self.view)
+
         if document != None:
             document.connect("loaded", self.update_stack_marks)
 
+            location = document.get_location()
+            if location != None:
+                tab = window.window.get_tab_from_location(location)
+                tab.set_orientation(Gtk.Orientation.HORIZONTAL)
+
+                viewFrame = tab.get_children()[0]
+                
+                scrolledWindow = viewFrame.get_child()
+
+                self.__drawArea = scrolledWindow
+                self.__drawArea.set_property("app-paintable", True)
+                self.__drawArea.connect("size-allocate", self.on_drawingarea_size_allocate)
+                self.__drawArea.connect_after("draw", self.on_drawingarea_draw)
+
         if AddiksDBGPApp.get().does_listen():
             self.show_breakpoint_gutter()
+
+    def on_drawingarea_size_allocate(self, widget, allocationRect, data=None):
+        widget.queue_draw()
+
+    def on_drawingarea_draw(self, widget, cairo, data=None):
+        textView = self.view
+        lineCount = textView.get_buffer().get_end_iter().get_line()
+        
+        viewHeight = widget.get_allocated_height()
+        viewWidth  = widget.get_allocated_width()
+
+        width = 3
+        document = self.view.get_buffer()
+        filePath = document.get_location().get_path()
+        for session in AddiksDBGPApp.get().get_active_sessions():
+            for entry in session.get_prepared_stack():
+                localFilePath = session.mapRemoteToLocalPath(entry['filename'][7:])
+                if 'filename' in entry and filePath == localFilePath:
+                    line = int(entry['lineno'])
+                    top    = int((line   / lineCount) * viewHeight)
+                    cairo.rectangle(viewWidth-width, top, width, 7)
+
+        cairo.set_source_rgb(0, 255, 0)
+        cairo.fill()
+
+        return False
 
     def do_deactivate(self):
         AddiksDBGPApp.get().unregister_view(self)
