@@ -110,12 +110,7 @@ class DebugSession:
             else:
                 self._features[feature_name] = None
 
-        typesXml = self.__send_command("typemap_get")
-        for mapXml in typesXml:
-            xsiType = None
-            if 'xsi:type' in mapXml.attrib:
-                xsiType = mapXml.attrib['xsi:type']
-            self._types.append([mapXml.attrib['name'], mapXml.attrib['type'], xsiType])
+        self._update_typemap()
 
         breakpoints = addiksdbgp.AddiksDBGPApp.get().get_all_breakpoints()
         for filePath in breakpoints:
@@ -128,6 +123,14 @@ class DebugSession:
 
         self.__send_command("step_into")
         GLib.idle_add(self.__show_window)
+
+    def _update_typemap(self):
+        typesXml = self.__send_command("typemap_get")
+        for mapXml in typesXml:
+            xsiType = None
+            if 'xsi:type' in mapXml.attrib:
+                xsiType = mapXml.attrib['xsi:type']
+            self._types.append([mapXml.attrib['name'], mapXml.attrib['type'], xsiType])
 
     def __show_window(self):
         builder = self._getGladeBuilder()
@@ -429,12 +432,11 @@ class DebugSession:
                     userInterface.addWatchRow(definition, definition, "array")
                     index = 0
                     for propertyXml in responseXml:
+                        fullName, name = self.__readXmlElementNames(propertyXml)
 
-                        if "fullname" not in propertyXml.attrib and "name" in propertyXml.attrib:
-                            propertyXml.attrib["fullname"] = propertyXml.attrib["name"]
-                        if propertyXml.attrib['fullname'] in self._expanded_watches:
-                            expandFullNames.append(propertyXml.attrib['fullname'])
-                            propertyXml = self.get_property(propertyXml.attrib['fullname'])
+                        if fullName in self._expanded_watches:
+                            expandFullNames.append(fullName)
+                            propertyXml = self.get_property(fullName)
 
                         fullName = definition+"["+str(index)+"]"
                         userInterface.addWatchRow(fullName, str(index), "array")
@@ -446,25 +448,25 @@ class DebugSession:
                     propertyXml = responseXml[0]
                     userInterface.addWatchRow(definition, definition)
                     userInterface.setWatchRowValue(definition, self.__get_value_by_propertyXml(propertyXml, definition, expandFullNames))
-                    
 
             writtenFullNames = []
-            for contextNameId in self.get_context_names():
+            contextNames = self.get_context_names()
+            for contextName in contextNames:
+                contextNameId = contextNames[contextName]
                 contextXml = self.get_context(contextNameId)
 
                 for propertyXml in contextXml:
-                    if "fullname" not in propertyXml.attrib and "name" in propertyXml.attrib:
-                        propertyXml.attrib["fullname"] = propertyXml.attrib["name"]
-                    if propertyXml.attrib['fullname'] not in writtenFullNames:
+                    fullName, name = self.__readXmlElementNames(propertyXml)
 
-                        if propertyXml.attrib['fullname'] in self._expanded_watches:
-                            expandFullNames.append(propertyXml.attrib['fullname'])
-                            propertyXml = self.get_property(propertyXml.attrib['fullname'])
+                    if fullName != None and fullName not in writtenFullNames:
 
-                        fullName = propertyXml.attrib['fullname']
-                        userInterface.addWatchRow(fullName, propertyXml.attrib['name'])
+                        if fullName in self._expanded_watches:
+                            expandFullNames.append(fullName)
+                            propertyXml = self.get_property(fullName)
+
+                        userInterface.addWatchRow(fullName, name)
                         userInterface.setWatchRowValue(fullName, self.__get_value_by_propertyXml(propertyXml, fullName, expandFullNames))
-                        writtenFullNames.append(propertyXml.attrib['fullname'])
+                        writtenFullNames.append(fullName)
 
             for fullName in expandFullNames:
                 userInterface.expandWatchRow(fullName)
@@ -475,8 +477,7 @@ class DebugSession:
             GLib.idle_add(self.__hideWindow)
             addiksdbgp.AddiksDBGPApp.get().remove_session(self)
 
-    def __get_value_by_propertyXml(self, propertyXml, parentFullName, expandFullNames=[]):
-
+    def __get_value_by_propertyXml(self, propertyXml, parentFullName, expandFullNames=[], tryTypemapUpdate=True):
         userInterface = self._getGladeHandler()
 
         tagName = propertyXml.tag
@@ -488,6 +489,11 @@ class DebugSession:
             return propertyXml[0].text
 
         dataType = propertyXml.attrib['type']
+        originalDataType = dataType
+
+        for typeName, dbgpType, xsiType in self._types:
+            if dataType == typeName:
+                dataType = dbgpType
 
         if dataType == 'uninitialized':
             return "{uninitialized}"
@@ -497,52 +503,44 @@ class DebugSession:
             if len(propertyXml)>0:
                 for childPropertyXml in propertyXml:
 
-                    name = childPropertyXml.attrib['name']
-                    if "fullname" not in childPropertyXml.attrib and "name" in childPropertyXml.attrib:
-                        childPropertyXml.attrib["fullname"] = childPropertyXml.attrib["name"]
-                    if childPropertyXml.attrib['fullname'] in self._expanded_watches:
-                        expandFullNames.append(childPropertyXml.attrib['fullname'])
-                        childPropertyXml = self.get_property(childPropertyXml.attrib['fullname'])
+                    fullName, name = self.__readXmlElementNames(childPropertyXml)
 
-                    fullName = childPropertyXml.attrib['fullname']
+                    if fullName in self._expanded_watches:
+                        expandFullNames.append(fullName)
+                        childPropertyXml = self.get_property(fullName)
+
                     userInterface.addWatchRow(fullName, name, None, parentFullName)
                     userInterface.setWatchRowValue(fullName, self.__get_value_by_propertyXml(childPropertyXml, fullName, expandFullNames))
             else:
                 userInterface.addWatchRow(None, None, None, parentFullName)
             return "object(" + propertyXml.attrib['numchildren'] + ") : " + propertyXml.attrib['classname']
 
-        elif dataType == 'array':
+        elif dataType == 'array': # like a list
+            return "{array is unimplemented type}"
+
+        elif dataType == 'hash': # like a dictionary
             data = {}
             if len(propertyXml)>0:
+                contentFound = False
                 for childPropertyXml in propertyXml:
+                    if childPropertyXml.tag == "property":
+                        contentFound = True
+                        fullName, name = self.__readXmlElementNames(childPropertyXml)
 
-                    name = childPropertyXml.attrib['name']
-                    if "fullname" not in childPropertyXml.attrib and "name" in childPropertyXml.attrib:
-                        childPropertyXml.attrib["fullname"] = childPropertyXml.attrib["name"]
-                    if childPropertyXml.attrib['fullname'] in self._expanded_watches:
-                        expandFullNames.append(childPropertyXml.attrib['fullname'])
-                        childPropertyXml = self.get_property(childPropertyXml.attrib['fullname'])
+                        if fullName in self._expanded_watches:
+                            expandFullNames.append(fullName)
+                            childPropertyXml = self.get_property(fullName)
 
-                    fullName = childPropertyXml.attrib['fullname']
-                    userInterface.addWatchRow(fullName, name, None, parentFullName)
-                    userInterface.setWatchRowValue(fullName, self.__get_value_by_propertyXml(childPropertyXml, fullName, expandFullNames))
+                        userInterface.addWatchRow(fullName, name, None, parentFullName)
+                        userInterface.setWatchRowValue(fullName, self.__get_value_by_propertyXml(childPropertyXml, fullName, expandFullNames))
+                if not contentFound:
+                    return self.__readXmlElementContent(childPropertyXml)
             else:
                 userInterface.addWatchRow(None, None, None, parentFullName)
-            return "array(" + propertyXml.attrib['numchildren'] + ")"
+            return originalDataType + "(" + propertyXml.attrib['numchildren'] + ")"
             
         elif dataType in ['string', 'float', 'int']:
-            if 'encoding' in propertyXml.attrib and propertyXml.attrib['encoding'] == "base64":
-                content = base64.b64decode(str(propertyXml.text))
-                if len(content) <= 0:
-                    content = ""
-                elif type(content) == bytes:
-                    try:
-                        content = content.decode("utf-8")
-                    except UnicodeDecodeError:
-                        content = "{charset-decoding-error while reading value}"
-                return content
-            else:
-                return propertyXml.text
+            return self.__readXmlElementContent(propertyXml)
 
         elif dataType in ['bool']:
             if propertyXml.text == '1':
@@ -551,9 +549,53 @@ class DebugSession:
                 return 'false'
 
         elif dataType in ['resource', 'null']:
-            return "{"+dataType+"}"
+            return "{"+originalDataType+"}"
+
+        if tryTypemapUpdate:
+            self._update_typemap()
+            return self.__get_value_by_propertyXml(propertyXml, parentFullName, expandFullNames, False)
+
+        content = self.__readXmlElementContent(propertyXml)
+        if type(content) == str:
+            return content
 
         return "{unknown type: '"+propertyXml.attrib['type']+"'}"
+
+    def __readXmlElementContent(self, contentXml):
+        for valueXml in contentXml.findall('{urn:debugger_protocol_v1}value'):
+            return self.__readXmlElementContent(valueXml)
+        content = str(contentXml.text)
+        if 'encoding' in contentXml.attrib:
+            if contentXml.attrib['encoding'] == "base64":
+                content = base64.b64decode(content)
+                if len(content) <= 0:
+                    content = ""
+                elif type(content) == bytes:
+                    try:
+                        content = content.decode("utf-8")
+                    except UnicodeDecodeError:
+                        content = "{charset-decoding-error while reading value}"
+        return content
+
+    def __readXmlElementNames(self, propertyXml):
+        name = None
+        if "name" in propertyXml.attrib:
+            name = propertyXml.attrib["name"]
+        else:
+            for nameXml in propertyXml.findall("{urn:debugger_protocol_v1}name"):
+                name = self.__readXmlElementContent(nameXml)
+
+        fullName = None
+        if "fullname" in propertyXml.attrib:
+            fullName = propertyXml.attrib["fullname"]
+        else:
+            for nameXml in propertyXml.findall("{urn:debugger_protocol_v1}fullname"):
+                fullName = self.__readXmlElementContent(nameXml)
+
+        if fullName == None:
+            fullName = name
+        
+        return fullName, name
 
     def open_uri_resouce(self, uri, line=None):
 
@@ -652,7 +694,14 @@ class DebugSession:
         clientSocket = self._client_socket
 
         packetBegin = clientSocket.recv(128).decode("utf-8")
-        
+
+        if len(packetBegin)<=0:
+            raise socket.Error("Connection was closed")
+
+        while True:
+            if len(packetBegin)>0:
+                break
+            time.sleep(0.005)
         lengthString, xmlData = packetBegin.split('\0', 1)
 
         pendingDataSize = int(lengthString) - len(xmlData)
@@ -701,8 +750,6 @@ class DebugSession:
         self._glade_handler = GladeHandler(self._plugin, self._glade_builder, session=self)
         self._glade_builder.connect_signals(self._glade_handler)
         
-
-
 
 
 

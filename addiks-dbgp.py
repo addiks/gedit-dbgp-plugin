@@ -371,15 +371,15 @@ class AddiksDBGPApp(GObject.Object, Gedit.AppActivatable):
         if line in breakpoints[filePath]:
             breakpoints[filePath].remove(line)
             for session in self.get_active_sessions():
-                session.remove_breakpoint_by_file_line(filePath, line)
+                start_new_thread(session.remove_breakpoint_by_file_line, (filePath, line, ))
         else:
             breakpoints[filePath].append(line)
             for session in self.get_active_sessions():
-                session.set_breakpoint({
+                start_new_thread(session.set_breakpoint, ({
                     'type':     'line',
                     'filename': filePath,
                     'lineno':   line,
-                })
+                }, ))
         self._save_breakpoints()
 
     ### PATHS
@@ -431,7 +431,6 @@ class AddiksDBGPView(GObject.Object, Gedit.ViewActivatable):
             location = document.get_location()
             if location != None:
                 tab = window.window.get_tab_from_location(location)
-                tab.set_orientation(Gtk.Orientation.HORIZONTAL)
 
                 viewFrame = tab.get_children()[0]
                 
@@ -517,6 +516,7 @@ class AddiksDBGPView(GObject.Object, Gedit.ViewActivatable):
             if document.get_location() != None:
                 filePath = document.get_location().get_path()   
                 line = textIter.get_line()+1 
+
                 AddiksDBGPApp.get().toggle_breakpoint(filePath, line)
     
                 # force redraw
