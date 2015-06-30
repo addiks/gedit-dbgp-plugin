@@ -523,7 +523,7 @@ class DebugSession:
             if len(propertyXml)>0:
                 contentFound = False
                 for childPropertyXml in propertyXml:
-                    if childPropertyXml.tag == "property":
+                    if childPropertyXml.tag == "{urn:debugger_protocol_v1}property":
                         contentFound = True
                         fullName, name = self.__readXmlElementNames(childPropertyXml)
 
@@ -677,7 +677,7 @@ class DebugSession:
             dataString = " -- " + base64.b64encode(data.encode("utf-8")).decode("utf-8")
         argumentsString = argumentsString.replace("{{#DATALENGTH#}}", str(len(dataString)-4))
         packet = command+" -i "+str(transactionId)+argumentsString+dataString+"\0"
-        #print(">>> "+packet)
+        print(">>> "+packet)
 
         # there is already a command being executed,
         # wait until it is finished
@@ -719,7 +719,7 @@ class DebugSession:
         if xmlData[-1] == "'":
             xmlData = xmlData[0:-1]
 
-        #print("<<< ("+lengthString+"):"+xmlData+"\n")
+        print("<<< ("+lengthString+"):"+xmlData+"\n")
 
         root = ElementTree.fromstring(xmlData)
 
