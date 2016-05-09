@@ -644,11 +644,10 @@ class AddiksDBGPWindow(GObject.Object, Gedit.WindowActivatable):
 
         self._actions = Gtk.ActionGroup("AddiksDBGPMenuActions")
         for actionName, title, shortcut, callback in ACTIONS:
-            self._actions.add_actions([(actionName, Gtk.STOCK_INFO, title, shortcut, "", callback),])
-
-            action = self.window.lookup_action(actionName)
-            if action != None:
-                action.set_enabled(True)
+            action = Gio.SimpleAction(name=actionName)
+            action.connect('activate', callback)
+            self.window.add_action(action)
+            self.window.lookup_action(actionName).set_enabled(True)
 
         if "get_ui_manager" in dir(self.window):# build menu for gedit 3.10 (global menu per window)
             self._ui_manager = self.window.get_ui_manager()
