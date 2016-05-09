@@ -49,7 +49,7 @@ class AddiksDBGPApp(GObject.Object, Gedit.AppActivatable):
         if "extend_menu" in dir(self): # build menu for gedit 3.12 (one menu per application)
             self.submenu_ext = self.extend_menu("tools-section-1")
             submenu = Gio.Menu()
-            item = Gio.MenuItem.new_submenu(_("Encrypt/decrypt"), submenu)
+            item = Gio.MenuItem.new_submenu(_("Debugging"), submenu)
             self.submenu_ext.append_menu_item(item)
 
             for actionName, title, shortcut, callback in ACTIONS:
@@ -645,6 +645,10 @@ class AddiksDBGPWindow(GObject.Object, Gedit.WindowActivatable):
         self._actions = Gtk.ActionGroup("AddiksDBGPMenuActions")
         for actionName, title, shortcut, callback in ACTIONS:
             self._actions.add_actions([(actionName, Gtk.STOCK_INFO, title, shortcut, "", callback),])
+
+            action = self.window.lookup_action(actionName)
+            if action != None:
+                action.set_enabled(True)
 
         if "get_ui_manager" in dir(self.window):# build menu for gedit 3.10 (global menu per window)
             self._ui_manager = self.window.get_ui_manager()
