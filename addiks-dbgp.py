@@ -42,9 +42,19 @@ class AddiksDBGPApp(GObject.Object, Gedit.AppActivatable):
         self._breakpoints = None
         self._glade_builder = None
         self._glade_handler = None
-        
+
     def do_activate(self):
         AddiksDBGPApp.__instance = self
+
+        if "extend_menu" in dir(self): # build menu for gedit 3.12 (one menu per application)
+            self.submenu_ext = self.extend_menu("tools-section-1")
+            submenu = Gio.Menu()
+            item = Gio.MenuItem.new_submenu(_("Encrypt/decrypt"), submenu)
+            self.submenu_ext.append_menu_item(item)
+
+            for actionName, title, shortcut, callback in ACTIONS:
+                item = Gio.MenuItem.new(title, actionName)
+                submenu.append_item(item)
 
     def do_deactivate(self):
         AddiksDBGPApp.__instance = None
@@ -67,7 +77,7 @@ class AddiksDBGPApp(GObject.Object, Gedit.AppActivatable):
                     window = self.get_window_by_view(view.view).window
                     tab = window.get_tab_from_location(document.get_location())
                     window.set_active_tab(tab)
-        
+
         location = Gio.File.new_for_path(filePath)
 
         if not found:
@@ -77,7 +87,7 @@ class AddiksDBGPApp(GObject.Object, Gedit.AppActivatable):
                 tab = window.create_tab_from_location(location, None, line, column, False, True)
                 found = True
                 break
-                
+
             if not found:
                 window = self.app.create_window()
                 tab = window.create_tab_from_location(location, None, line, column, False, True)
@@ -147,13 +157,13 @@ class AddiksDBGPApp(GObject.Object, Gedit.AppActivatable):
     ### SINGLETON
 
     __instance = None
-    
+
     @staticmethod
     def get():
         if AddiksDBGPApp.__instance == None:
             AddiksDBGPApp.__instance = AddiksDBGPApp()
         return AddiksDBGPApp.__instance
-        
+
     ### WINDOW / VIEW MANAGEMENT
 
     windows = []
@@ -238,7 +248,7 @@ class AddiksDBGPApp(GObject.Object, Gedit.AppActivatable):
 
     def does_listen(self):
         return len(self._listening_sockets)>0
-    
+
     def _listenPort(self, listenSocket):
         listenSocket.listen(5)
         listenSocket.settimeout(0.5)
@@ -432,7 +442,7 @@ class AddiksDBGPApp(GObject.Object, Gedit.AppActivatable):
         return basedir
 
     ### GLADE
-       
+   
     def _getGladeHandler(self):
         if self._glade_handler == None:
             self.__initGlade()
@@ -448,7 +458,7 @@ class AddiksDBGPApp(GObject.Object, Gedit.AppActivatable):
         self._glade_builder.add_from_file(os.path.dirname(__file__)+"/debugger.glade")
         self._glade_handler = GladeHandler(self, self._glade_builder)
         self._glade_builder.connect_signals(self._glade_handler)
-        
+
 
 class AddiksDBGPView(GObject.Object, Gedit.ViewActivatable):
     view = GObject.property(type=Gedit.View)
@@ -475,7 +485,7 @@ class AddiksDBGPView(GObject.Object, Gedit.ViewActivatable):
                 tab = window.window.get_tab_from_location(location)
 
                 viewFrame = tab.get_children()[0]
-                
+
                 scrolledWindow = viewFrame.get_child()
 
                 self.__drawArea = scrolledWindow
@@ -492,7 +502,7 @@ class AddiksDBGPView(GObject.Object, Gedit.ViewActivatable):
     def on_drawingarea_draw(self, widget, cairo, data=None):
         textView = self.view
         lineCount = textView.get_buffer().get_end_iter().get_line()
-        
+
         viewHeight = widget.get_allocated_height()
         viewWidth  = widget.get_allocated_width()
 
@@ -544,14 +554,14 @@ class AddiksDBGPView(GObject.Object, Gedit.ViewActivatable):
             gicon = Gio.FileIcon.new(gfile)
             self._gutter_breakpoint_icon = gicon
         return self._gutter_breakpoint_icon
-    
+
     def _get_empty_pixbuf(self):
         if self._gutter_empty_pixbuf == None:
             colorspace = GdkPixbuf.Colorspace.RGB
             self._gutter_empty_pixbuf = GdkPixbuf.Pixbuf.new(colorspace, True, 8, 16, 16)
             self._gutter_empty_pixbuf.fill(0x00000000)
         return self._gutter_empty_pixbuf
-            
+
     def _on_breakpoint_gutter_query_activatable(self, renderer, textIter, area, event):  
         if event.get_event_type() == Gdk.EventType.BUTTON_PRESS:
             document = self.view.get_buffer()
@@ -560,7 +570,7 @@ class AddiksDBGPView(GObject.Object, Gedit.ViewActivatable):
                 line = textIter.get_line()+1 
 
                 AddiksDBGPApp.get().toggle_breakpoint(filePath, line)
-    
+
                 # force redraw
                 renderer = self.get_gutter_renderer()
                 gutter = self.view.get_gutter(Gtk.TextWindowType.LEFT)
@@ -572,7 +582,7 @@ class AddiksDBGPView(GObject.Object, Gedit.ViewActivatable):
             filePath = document.get_location().get_path()
             if textIterStart.get_line()+1 in AddiksDBGPApp.get().get_breakpoints(filePath):
                 renderer.set_gicon(self._get_breakpoint_icon())
-            else:          
+            else:  
                 renderer.set_pixbuf(self._get_empty_pixbuf())
 
     def update_stack_marks(self, document=None, foo=None):
@@ -620,7 +630,7 @@ class AddiksDBGPView(GObject.Object, Gedit.ViewActivatable):
 
         return tag
 
-    
+
 class AddiksDBGPWindow(GObject.Object, Gedit.WindowActivatable):
     window = GObject.property(type=Gedit.Window)
 
@@ -629,66 +639,54 @@ class AddiksDBGPWindow(GObject.Object, Gedit.WindowActivatable):
 
     def do_activate(self):
         AddiksDBGPApp.get().register_window(self)
-        
+
         plugin_path = os.path.dirname(__file__)
-        self._ui_manager = self.window.get_ui_manager()
-        actions = [
-            ['DebugAction',                "Debugging",                           "",    None],
-            ['StartListeningAction',       "Start listening for debug-sessions",  "",    AddiksDBGPApp.get().start_listening],
-            ['StopListeningAction',        "Stop listening for debug-sessions",   "",    AddiksDBGPApp.get().stop_listening],
-            ['ManageProfilesAction',       "Manage profiles",                     "",    AddiksDBGPApp.get().show_profile_manager],
-            ['ManageBreakpointsAction',    "Manage breakpoints",                  "",    AddiksDBGPApp.get().show_breakpoints],
-            ['SessionStopAction',          "Stop session",                        "",    AddiksDBGPApp.get().session_stop],
-            ['SessionStepIntoAction',      "Step into",                           "F5",  AddiksDBGPApp.get().session_step_into],
-            ['SessionStepOverAction',      "Step over",                           "F6",  AddiksDBGPApp.get().session_step_over],
-            ['SessionStepOutAction',       "Step out",                            "F7",  AddiksDBGPApp.get().session_step_out],
-            ['SessionRunAction',           "Run",                                 "F8",  AddiksDBGPApp.get().session_run],
-            ['SessionRunToEndAction',      "Run to end (ignore breakpoints)",     "F9",  AddiksDBGPApp.get().session_run_to_end],
-        ]
 
         self._actions = Gtk.ActionGroup("AddiksDBGPMenuActions")
-        for actionName, title, shortcut, callback in actions:
+        for actionName, title, shortcut, callback in ACTIONS:
             self._actions.add_actions([(actionName, Gtk.STOCK_INFO, title, shortcut, "", callback),])
 
-        self._ui_manager.insert_action_group(self._actions)
-        self._ui_merge_id = self._ui_manager.add_ui_from_string(file_get_contents(plugin_path + "/menubar.xml"))
-        
-        debugMenu = self._ui_manager.get_widget("/ui/MenuBar/AddiksDbgpDebug").get_submenu()
+        if "get_ui_manager" in dir(self.window):# build menu for gedit 3.10 (global menu per window)
+            self._ui_manager = self.window.get_ui_manager()
+            self._ui_manager.insert_action_group(self._actions)
+            self._ui_merge_id = self._ui_manager.add_ui_from_string(file_get_contents(plugin_path + "/menubar.3-10.xml"))
 
-        xdebugMenuItem = Gtk.MenuItem()
-        xdebugMenuItem.set_label("XDebug / HTTP")
-        xdebugMenuItem.show()
+            debugMenu = self._ui_manager.get_widget("/ui/MenuBar/AddiksDbgpDebug").get_submenu()
 
-        debugMenu.attach(xdebugMenuItem, 0, 1, 0, 1)
+            xdebugMenuItem = Gtk.MenuItem()
+            xdebugMenuItem.set_label("XDebug / HTTP")
+            xdebugMenuItem.show()
 
-        xdebugMenu = Gtk.Menu()
-        xdebugMenuItem.set_submenu(xdebugMenu)
+            debugMenu.attach(xdebugMenuItem, 0, 1, 0, 1)
 
-        for profileName in AddiksDBGPApp.get().get_profile_manager().get_profiles():
-            
-            menuItem = Gtk.MenuItem()
-            menuItem._addiks_profile_name = profileName
-            menuItem.set_label("Send start-debugging request to: "+profileName)
-            menuItem.connect("activate", self.on_run_session_per_menu)
-            menuItem.show()
+            xdebugMenu = Gtk.Menu()
+            xdebugMenuItem.set_submenu(xdebugMenu)
 
-            xdebugMenu.attach(menuItem, 0, 1, 0, 1)
+            for profileName in AddiksDBGPApp.get().get_profile_manager().get_profiles():
 
-        seperator = Gtk.SeparatorMenuItem()
-        seperator.show()
-        xdebugMenu.attach(seperator, 0, 1, 0, 1)
+                menuItem = Gtk.MenuItem()
+                menuItem._addiks_profile_name = profileName
+                menuItem.set_label("Send start-debugging request to: "+profileName)
+                menuItem.connect("activate", self.on_run_session_per_menu)
+                menuItem.show()
 
-        for profileName in AddiksDBGPApp.get().get_profile_manager().get_profiles():
-            
-            menuItem = Gtk.MenuItem()
-            menuItem._addiks_profile_name = profileName
-            menuItem.set_label("Send stop-debugging request to: "+profileName)
-            menuItem.connect("activate", self.on_stop_session_per_menu)
-            menuItem.show()
+                xdebugMenu.attach(menuItem, 0, 1, 0, 1)
 
-            xdebugMenu.attach(menuItem, 0, 1, 0, 1)
+            seperator = Gtk.SeparatorMenuItem()
+            seperator.show()
+            xdebugMenu.attach(seperator, 0, 1, 0, 1)
 
-        self._ui_manager.ensure_update()
+            for profileName in AddiksDBGPApp.get().get_profile_manager().get_profiles():
+
+                menuItem = Gtk.MenuItem()
+                menuItem._addiks_profile_name = profileName
+                menuItem.set_label("Send stop-debugging request to: "+profileName)
+                menuItem.connect("activate", self.on_stop_session_per_menu)
+                menuItem.show()
+
+                xdebugMenu.attach(menuItem, 0, 1, 0, 1)
+
+            self._ui_manager.ensure_update()
 
         if AddiksDBGPApp.get().does_listen():
             self.set_listen_menu_set_started()
@@ -707,7 +705,7 @@ class AddiksDBGPWindow(GObject.Object, Gedit.WindowActivatable):
 
     def do_deactivate(self):
         AddiksDBGPApp.get().unregister_window(self)
-        
+
     def do_update_state(self):
         pass
 
@@ -726,4 +724,17 @@ class AddiksDBGPWindow(GObject.Object, Gedit.WindowActivatable):
         actionStart.set_visible(True)
         actionStop.set_visible(False)
 
+ACTIONS = [
+    ['DebugAction',                "Debugging",                           "",    None],
+    ['StartListeningAction',       "Start listening for debug-sessions",  "",    AddiksDBGPApp.get().start_listening],
+    ['StopListeningAction',        "Stop listening for debug-sessions",   "",    AddiksDBGPApp.get().stop_listening],
+    ['ManageProfilesAction',       "Manage profiles",                     "",    AddiksDBGPApp.get().show_profile_manager],
+    ['ManageBreakpointsAction',    "Manage breakpoints",                  "",    AddiksDBGPApp.get().show_breakpoints],
+    ['SessionStopAction',          "Stop session",                        "",    AddiksDBGPApp.get().session_stop],
+    ['SessionStepIntoAction',      "Step into",                           "F5",  AddiksDBGPApp.get().session_step_into],
+    ['SessionStepOverAction',      "Step over",                           "F6",  AddiksDBGPApp.get().session_step_over],
+    ['SessionStepOutAction',       "Step out",                            "F7",  AddiksDBGPApp.get().session_step_out],
+    ['SessionRunAction',           "Run",                                 "F8",  AddiksDBGPApp.get().session_run],
+    ['SessionRunToEndAction',      "Run to end (ignore breakpoints)",     "F9",  AddiksDBGPApp.get().session_run_to_end],
+]
 
