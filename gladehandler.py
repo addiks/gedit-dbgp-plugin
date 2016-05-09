@@ -376,5 +376,29 @@ class GladeHandler:
             remotePath = liststorePathmapping.get_value(treeIter, 1)
             self._path_mapping_manager.remove_path_mapping(localPath, remotePath)
 
+    ### BREAKPOINTS
+
+    def onBreakpointsRemove(self, button=None):
+        builder = self._builder
+        liststoreBreakpoints = builder.get_object("liststoreBreakpoints")
+        treeviewBreakpoints = builder.get_object("treeviewBreakpoints")
+
+        selection = treeviewBreakpoints.get_selection()
+
+        store, selected_rows = selection.get_selected_rows()
+
+        for path in selected_rows:
+            treeIter   = liststoreBreakpoints.get_iter(path)
+            path = liststoreBreakpoints.get_value(treeIter, 0)
+            line = liststoreBreakpoints.get_value(treeIter, 1)
+            self._plugin.toggle_breakpoint(path, line)
+
+    def onBreakpointsClear(self, button=None):
+        builder = self._builder
+        liststoreBreakpoints = builder.get_object("liststoreBreakpoints")
+        treeviewBreakpoints = builder.get_object("treeviewBreakpoints")
+
+        self._plugin.clear_breakpoints()
+
 
 

@@ -101,6 +101,26 @@ class AddiksDBGPApp(GObject.Object, Gedit.AppActivatable):
     def show_profile_manager(self, foo=None):
         self.get_profile_manager().show()
 
+    def show_breakpoints(self, foo=None):
+
+        builder = self._getGladeBuilder()
+
+        windowBreakpoints = builder.get_object("windowBreakpoints")
+        liststoreBreakpoints = builder.get_object("liststoreBreakpoints")
+        treeviewBreakpoints = builder.get_object("treeviewBreakpoints")
+
+        selection = treeviewBreakpoints.get_selection()
+        selection.set_mode(Gtk.SelectionMode.MULTIPLE)
+
+        breakpoints = self.get_all_breakpoints()
+        for filePath in breakpoints:
+            for line in breakpoints[filePath]:
+                rowIter = liststoreBreakpoints.append()
+                liststoreBreakpoints.set_value(rowIter, 0, filePath)
+                liststoreBreakpoints.set_value(rowIter, 1, line)
+
+        windowBreakpoints.show_all()
+
     def get_profile_manager(self):
         if self._debug_profile_manager == None:
             self._debug_profile_manager = ProfileManager(self)
@@ -262,6 +282,25 @@ class AddiksDBGPApp(GObject.Object, Gedit.AppActivatable):
         except (TimeoutError, socket.timeout):
             self.__show_dialog("Error connecting to dbgp-Proxy "+repr(address)+": Timeout!")
 
+        except ElementTree.ParseError:
+            # retry with size before packet
+            dbgpSocket.close()
+            dbgpSocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            dbgpSocket.settimeout(0.5)
+            try:
+                dbgpSocket.connect(address)
+                packetData = "proxyinit -p "+str(int(listenPort))+" -k "+ideKey+" -m 0\0"
+                dbgpSocket.send(bytes(str(len(packetData)) + "\0" + packetData), 'UTF-8')
+                responseXmlData = dbgpSocket.recv(1024).decode("utf-8")
+                responseXml = ElementTree.fromstring(responseXmlData)
+                if responseXml.attrib['success'] != "1":
+                    errorMessage = responseXml[0][0].text
+                    self.__show_dialog("Error registering with dbgp-Proxy "+repr(address)+": "+errorMessage)
+            except ConnectionRefusedError:
+                self.__show_dialog("Error connecting to dbgp-Proxy "+repr(address)+": Connection refused!")
+            except (TimeoutError, socket.timeout):
+                self.__show_dialog("Error connecting to dbgp-Proxy "+repr(address)+": Timeout!")
+
     def dbgp_proxy_stop(self, ideKey):
         dbgpSocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         address = (hostname, int(port))
@@ -357,6 +396,9 @@ class AddiksDBGPApp(GObject.Object, Gedit.AppActivatable):
             if os.path.exists(filePath):
                 self._breakpoints = eval(file_get_contents(filePath))
         return self._breakpoints
+
+    def clear_breakpoints(self):
+        pass
 
     def get_breakpoints(self, filePath):
         breakpoints = self.get_all_breakpoints()
@@ -595,6 +637,7 @@ class AddiksDBGPWindow(GObject.Object, Gedit.WindowActivatable):
             ['StartListeningAction',       "Start listening for debug-sessions",  "",    AddiksDBGPApp.get().start_listening],
             ['StopListeningAction',        "Stop listening for debug-sessions",   "",    AddiksDBGPApp.get().stop_listening],
             ['ManageProfilesAction',       "Manage profiles",                     "",    AddiksDBGPApp.get().show_profile_manager],
+            ['ManageBreakpointsAction',    "Manage breakpoints",                  "",    AddiksDBGPApp.get().show_breakpoints],
             ['SessionStopAction',          "Stop session",                        "",    AddiksDBGPApp.get().session_stop],
             ['SessionStepIntoAction',      "Step into",                           "F5",  AddiksDBGPApp.get().session_step_into],
             ['SessionStepOverAction',      "Step over",                           "F6",  AddiksDBGPApp.get().session_step_over],

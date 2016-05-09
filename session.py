@@ -83,7 +83,7 @@ class DebugSession:
 #</init>
 
         initXml = self.__read_xml_packet()
-        
+
         self._options.update(initXml.attrib)
 
         profileManager = self._plugin.get_profile_manager()
@@ -181,7 +181,7 @@ class DebugSession:
     def remove_watch(self, definition):
         self._custom_watches.remove(definition)
         self.__update_view()
-    
+
     def clear_watches(self):
         self._custom_watches = []
         self._expanded_watches = []
@@ -202,12 +202,12 @@ class DebugSession:
         if fullName in self._expanded_watches:
             self._expanded_watches.remove(fullName)
             self.__update_view()
-        
+
     def __hideWindow(self):
         builder = self._getGladeBuilder()
         window = builder.get_object("windowSession")
         window.hide()
-        
+
     ### COMMANDS
 
     def run(self, clearBreakpoints=False):
@@ -216,6 +216,7 @@ class DebugSession:
                 breakpoints = self.list_breakpoints()
                 for breakpointId in breakpoints:
                     self.remove_breakpoint(breakpointId)
+            self.cleanup_view()
             responseXml = self.__send_command("run")
             self._status = responseXml.attrib['status']
             self.__update_view(True)
@@ -227,6 +228,7 @@ class DebugSession:
 
     def step_into(self):
         try:
+            self.cleanup_view()
             responseXml = self.__send_command("step_into")
             self._status = responseXml.attrib['status']
             self.__update_view(True)
@@ -238,6 +240,7 @@ class DebugSession:
 
     def step_over(self):
         try:
+            self.cleanup_view()
             responseXml = self.__send_command("step_over")
             self._status = responseXml.attrib['status']
             self.__update_view(True)
@@ -249,6 +252,7 @@ class DebugSession:
 
     def step_out(self):
         try:
+            self.cleanup_view()
             responseXml = self.__send_command("step_out")
             self._status = responseXml.attrib['status']
             self.__update_view(True)
@@ -273,7 +277,7 @@ class DebugSession:
     def set_breakpoint(self, input_options={}):
         arguments, expression = self.__get_breakpoint_arguments(input_options)
         responseXml = self.__send_command("breakpoint_set", arguments, expression)
-        
+
     def list_breakpoints(self):
         responseXml = self.__send_command("breakpoint_list")
         breakpoints = {}
@@ -373,6 +377,15 @@ class DebugSession:
     def get_prepared_stack(self):
         return self._prepared_stack
 
+    def cleanup_view(self, doUpdateStackMarks=True):
+        userInterface = self._getGladeHandler()
+        userInterface.clearStack()
+        userInterface.clearWatches()
+        if doUpdateStackMarks:
+            self._prepared_stack = []
+            for view in addiksdbgp.AddiksDBGPApp.get().get_all_views():
+                GLib.idle_add(view.update_stack_marks)
+
     def __update_view(self, openTopFile=False):
 
         try:
@@ -381,8 +394,8 @@ class DebugSession:
 
             userInterface = self._getGladeHandler()
             scroll = userInterface.getWatchesScrollPosition()
-            userInterface.clearStack()
-            userInterface.clearWatches()
+
+            self.cleanup_view(False)
 
             if self._status in ['stopping', 'stopped']:
                 self._prepared_stack = []
@@ -421,9 +434,9 @@ class DebugSession:
 
             if openTopFile and topStackFilepath != None:
                 GLib.idle_add(self.open_uri_resouce, topStackFilepath, topStackLineNr)
-                 
+         
             ### WATCHES
-       
+   
             expandFullNames = []
 
             for definition in self._custom_watches:
@@ -538,7 +551,7 @@ class DebugSession:
             else:
                 userInterface.addWatchRow(None, None, None, parentFullName)
             return originalDataType + "(" + propertyXml.attrib['numchildren'] + ")"
-            
+    
         elif dataType in ['string', 'float', 'int']:
             return self.__readXmlElementContent(propertyXml)
 
@@ -574,7 +587,8 @@ class DebugSession:
                     try:
                         content = content.decode("utf-8")
                     except UnicodeDecodeError:
-                        content = "{charset-decoding-error while reading value}"
+                        #content = "{charset-decoding-error while reading value}"
+                        content = "" # for some reason this happens with all empty strings, so wth...
         return content
 
     def __readXmlElementNames(self, propertyXml):
@@ -594,7 +608,7 @@ class DebugSession:
 
         if fullName == None:
             fullName = name
-        
+
         return fullName, name
 
     def open_uri_resouce(self, uri, line=None):
@@ -649,7 +663,7 @@ class DebugSession:
 
         if options['type'] in ['exception']:
             arguments.append('-x ' + options['exception'])
-        
+
         if options['type'] in ['conditional', 'watch']:
             expression = options['expression']
 
@@ -689,7 +703,7 @@ class DebugSession:
         xml = self.__read_xml_packet(transactionId)
         self._is_waiting_for_server = False
         return xml
-        
+
     def __read_xml_packet(self, transactionId=None):
         clientSocket = self._client_socket
 
@@ -709,9 +723,9 @@ class DebugSession:
             dataBlock = clientSocket.recv(pendingDataSize).decode("utf-8")
             pendingDataSize -= len(dataBlock)
             xmlData += dataBlock
-            
-        endingNullByte = clientSocket.recv(1)
     
+        endingNullByte = clientSocket.recv(1)
+
         xmlData = xmlData.replace("\\n", "\n")
         xmlData = xmlData.replace("\\x00", "")
         xmlData = xmlData.replace("\0", "")
@@ -733,7 +747,7 @@ class DebugSession:
             self._status = root.attrib['status']
 
         return root
-        
+
     def _getGladeHandler(self):
         if self._glade_handler == None:
             self.__initGlade()
@@ -749,7 +763,7 @@ class DebugSession:
         self._glade_builder.add_from_file(os.path.dirname(__file__)+"/debugger.glade")
         self._glade_handler = GladeHandler(self._plugin, self._glade_builder, session=self)
         self._glade_builder.connect_signals(self._glade_handler)
-        
+
 
 
 

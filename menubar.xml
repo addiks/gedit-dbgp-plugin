@@ -4,7 +4,8 @@
             <menuitem name="StartListening" action="StartListeningAction"/>
             <menuitem name="StopListening"  action="StopListeningAction"/>
             <separator/>
-            <menuitem name="ManageProfiles"       action="ManageProfilesAction"/>
+            <menuitem name="ManageProfiles"    action="ManageProfilesAction"/>
+            <menuitem name="ManageBreakpoints" action="ManageBreakpointsAction"/>
             <separator/>
             <menuitem name="SessionStop"       action="SessionStopAction"/>
             <menuitem name="SessionStepInto"   action="SessionStepIntoAction"/>
