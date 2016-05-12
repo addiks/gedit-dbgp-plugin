@@ -67,8 +67,9 @@ class AddiksDBGPApp(GObject.Object, Gedit.AppActivatable):
             self.submenu_ext.append_menu_item(item)
 
             for actionName, title, shortcut, callbackName in ACTIONS:
-                item = Gio.MenuItem.new(title, "win.%s" % actionName)
-                submenu.append_item(item)
+                if callbackName != None:
+                    item = Gio.MenuItem.new(title, "win.%s" % actionName)
+                    submenu.append_item(item)
 
     def do_deactivate(self):
         AddiksDBGPApp.__instance = None
@@ -576,7 +577,7 @@ class AddiksDBGPView(GObject.Object, Gedit.ViewActivatable):
             self._gutter_empty_pixbuf.fill(0x00000000)
         return self._gutter_empty_pixbuf
 
-    def _on_breakpoint_gutter_query_activatable(self, renderer, textIter, area, event):  
+    def _on_breakpoint_gutter_query_activatable(self, renderer, textIter, area, event):
         if event.get_event_type() == Gdk.EventType.BUTTON_PRESS:
             document = self.view.get_buffer()
             if document.get_location() != None:
@@ -647,6 +648,7 @@ class AddiksDBGPView(GObject.Object, Gedit.ViewActivatable):
 
 class AddiksDBGPWindow(GObject.Object, Gedit.WindowActivatable):
     window = GObject.property(type=Gedit.Window)
+    _ui_manager = None
 
     def __init__(self):
         GObject.Object.__init__(self)
@@ -657,6 +659,7 @@ class AddiksDBGPWindow(GObject.Object, Gedit.WindowActivatable):
         plugin_path = os.path.dirname(__file__)
 
         self._actions = Gtk.ActionGroup("AddiksDBGPMenuActions")
+        self._actionsGio = {}
         for actionName, title, shortcut, callbackName in ACTIONS:
             action = Gio.SimpleAction(name=actionName)
             callback = None
@@ -664,6 +667,7 @@ class AddiksDBGPWindow(GObject.Object, Gedit.WindowActivatable):
                 callback = getattr(AddiksDBGPApp.get(), callbackName)
                 action.connect('activate', callback)
             self._actions.add_actions([(actionName, Gtk.STOCK_INFO, title, shortcut, "", callback),])
+            self._actionsGio[actionName] = action
             self.window.add_action(action)
             self.window.lookup_action(actionName).set_enabled(True)
 
@@ -731,17 +735,18 @@ class AddiksDBGPWindow(GObject.Object, Gedit.WindowActivatable):
         pass
 
     def get_accel_group(self):
-        return self._ui_manager.get_accel_group()
+        if self._ui_manager != None:
+            return self._ui_manager.get_accel_group()
 
     def set_listen_menu_set_started(self):
-        actionStart = self._actions.get_action("StartListeningAction")
-        actionStop  = self._actions.get_action("StopListeningAction")
-        actionStart.set_visible(False)
-        actionStop.set_visible(True)
+        self._actions.get_action("StartListeningAction").set_visible(False)
+        self._actions.get_action("StopListeningAction").set_visible(True)
+        self._actionsGio["StartListeningAction"].set_enabled(False)
+        self._actionsGio["StopListeningAction"].set_enabled(True)
 
     def set_listen_menu_set_stopped(self):
-        actionStart = self._actions.get_action("StartListeningAction")
-        actionStop  = self._actions.get_action("StopListeningAction")
-        actionStart.set_visible(True)
-        actionStop.set_visible(False)
+        self._actions.get_action("StartListeningAction").set_visible(True)
+        self._actions.get_action("StopListeningAction").set_visible(False)
+        self._actionsGio["StartListeningAction"].set_enabled(True)
+        self._actionsGio["StopListeningAction"].set_enabled(False)
 

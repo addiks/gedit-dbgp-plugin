@@ -138,7 +138,8 @@ class DebugSession:
         window.set_title("Running process: " + self._options['idekey']);
      #   window.set_keep_above(True)
         accelGroup = addiksdbgp.AddiksDBGPApp.get().get_all_windows()[0].get_accel_group()
-        window.add_accel_group(accelGroup)
+        if accelGroup != None:
+            window.add_accel_group(accelGroup)
         window.show_all()
         start_new_thread(self.__after_show_window, ())
 
@@ -691,7 +692,7 @@ class DebugSession:
             dataString = " -- " + base64.b64encode(data.encode("utf-8")).decode("utf-8")
         argumentsString = argumentsString.replace("{{#DATALENGTH#}}", str(len(dataString)-4))
         packet = command+" -i "+str(transactionId)+argumentsString+dataString+"\0"
-        print(">>> "+packet)
+        #print(">>> "+packet)
 
         # there is already a command being executed,
         # wait until it is finished
@@ -733,7 +734,7 @@ class DebugSession:
         if xmlData[-1] == "'":
             xmlData = xmlData[0:-1]
 
-        print("<<< ("+lengthString+"):"+xmlData+"\n")
+        #print("<<< ("+lengthString+"):"+xmlData+"\n")
 
         root = ElementTree.fromstring(xmlData)
 
