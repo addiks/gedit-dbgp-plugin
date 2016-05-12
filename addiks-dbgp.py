@@ -30,6 +30,20 @@ from os.path import expanduser
 from _thread import start_new_thread
 import xml.etree.ElementTree as ElementTree
 
+ACTIONS = [
+    ['DebugAction',                "Debugging",                           "",    None],
+    ['StartListeningAction',       "Start listening for debug-sessions",  "",    "start_listening"],
+    ['StopListeningAction',        "Stop listening for debug-sessions",   "",    "stop_listening"],
+    ['ManageProfilesAction',       "Manage profiles",                     "",    "show_profile_manager"],
+    ['ManageBreakpointsAction',    "Manage breakpoints",                  "",    "show_breakpoints"],
+    ['SessionStopAction',          "Stop session",                        "",    "session_stop"],
+    ['SessionStepIntoAction',      "Step into",                           "F5",  "session_step_into"],
+    ['SessionStepOverAction',      "Step over",                           "F6",  "session_step_over"],
+    ['SessionStepOutAction',       "Step out",                            "F7",  "session_step_out"],
+    ['SessionRunAction',           "Run",                                 "F8",  "session_run"],
+    ['SessionRunToEndAction',      "Run to end (ignore breakpoints)",     "F9",  "session_run_to_end"],
+]
+
 class AddiksDBGPApp(GObject.Object, Gedit.AppActivatable):
     app = GObject.property(type=Gedit.App)
 
@@ -52,8 +66,8 @@ class AddiksDBGPApp(GObject.Object, Gedit.AppActivatable):
             item = Gio.MenuItem.new_submenu(_("Debugging"), submenu)
             self.submenu_ext.append_menu_item(item)
 
-            for actionName, title, shortcut, callback in ACTIONS:
-                item = Gio.MenuItem.new(title, actionName)
+            for actionName, title, shortcut, callbackName in ACTIONS:
+                item = Gio.MenuItem.new(title, "win.%s" % actionName)
                 submenu.append_item(item)
 
     def do_deactivate(self):
@@ -108,10 +122,10 @@ class AddiksDBGPApp(GObject.Object, Gedit.AppActivatable):
         sleep(0.01)
         GLib.idle_add(window.present)
 
-    def show_profile_manager(self, foo=None):
+    def show_profile_manager(self, foo=None, bar=None):
         self.get_profile_manager().show()
 
-    def show_breakpoints(self, foo=None):
+    def show_breakpoints(self, foo=None, bar=None):
 
         builder = self._getGladeBuilder()
 
@@ -210,7 +224,7 @@ class AddiksDBGPApp(GObject.Object, Gedit.AppActivatable):
 
     ### SOCKETS
 
-    def start_listening(self, foo=None):
+    def start_listening(self, foo=None, bar=None):
         ports = []
         dbgpProxies = []
         for profileName in self.get_profile_manager().get_profiles():
@@ -264,7 +278,7 @@ class AddiksDBGPApp(GObject.Object, Gedit.AppActivatable):
         self._active_sessions.append(session)
         session.init()
 
-    def stop_listening(self, foo=None):
+    def stop_listening(self, foo=None, bar=None):
         for socket in self._listening_sockets:
             socket.close()
         self._listening_sockets = []
@@ -356,32 +370,32 @@ class AddiksDBGPApp(GObject.Object, Gedit.AppActivatable):
 
     ### SESSION MANAGEMENT
 
-    def session_run(self, foo=None):
+    def session_run(self, foo=None, bar=None):
         sessions = self.get_active_sessions()
         if len(sessions) > 0:
             sessions[0].run()
 
-    def session_run_to_end(self, foo=None):
+    def session_run_to_end(self, foo=None, bar=None):
         sessions = self.get_active_sessions()
         if len(sessions) > 0:
             sessions[0].run(True)
 
-    def session_step_into(self, foo=None):
+    def session_step_into(self, foo=None, bar=None):
         sessions = self.get_active_sessions()
         if len(sessions) > 0:
             sessions[0].step_into()
 
-    def session_step_over(self, foo=None):
+    def session_step_over(self, foo=None, bar=None):
         sessions = self.get_active_sessions()
         if len(sessions) > 0:
             sessions[0].step_over()
 
-    def session_step_out(self, foo=None):
+    def session_step_out(self, foo=None, bar=None):
         sessions = self.get_active_sessions()
         if len(sessions) > 0:
             sessions[0].step_out()
 
-    def session_stop(self, foo=None):
+    def session_stop(self, foo=None, bar=None):
         sessions = self.get_active_sessions()
         if len(sessions) > 0:
             sessions[0].stop()
@@ -585,7 +599,7 @@ class AddiksDBGPView(GObject.Object, Gedit.ViewActivatable):
             else:  
                 renderer.set_pixbuf(self._get_empty_pixbuf())
 
-    def update_stack_marks(self, document=None, foo=None):
+    def update_stack_marks(self, document=None, foo=None, bar=None):
         if document == None:
             document = self.view.get_buffer()
 
@@ -643,9 +657,13 @@ class AddiksDBGPWindow(GObject.Object, Gedit.WindowActivatable):
         plugin_path = os.path.dirname(__file__)
 
         self._actions = Gtk.ActionGroup("AddiksDBGPMenuActions")
-        for actionName, title, shortcut, callback in ACTIONS:
+        for actionName, title, shortcut, callbackName in ACTIONS:
             action = Gio.SimpleAction(name=actionName)
-            action.connect('activate', callback)
+            callback = None
+            if callbackName != None:
+                callback = getattr(AddiksDBGPApp.get(), callbackName)
+                action.connect('activate', callback)
+            self._actions.add_actions([(actionName, Gtk.STOCK_INFO, title, shortcut, "", callback),])
             self.window.add_action(action)
             self.window.lookup_action(actionName).set_enabled(True)
 
@@ -726,18 +744,4 @@ class AddiksDBGPWindow(GObject.Object, Gedit.WindowActivatable):
         actionStop  = self._actions.get_action("StopListeningAction")
         actionStart.set_visible(True)
         actionStop.set_visible(False)
-
-ACTIONS = [
-    ['DebugAction',                "Debugging",                           "",    None],
-    ['StartListeningAction',       "Start listening for debug-sessions",  "",    AddiksDBGPApp.get().start_listening],
-    ['StopListeningAction',        "Stop listening for debug-sessions",   "",    AddiksDBGPApp.get().stop_listening],
-    ['ManageProfilesAction',       "Manage profiles",                     "",    AddiksDBGPApp.get().show_profile_manager],
-    ['ManageBreakpointsAction',    "Manage breakpoints",                  "",    AddiksDBGPApp.get().show_breakpoints],
-    ['SessionStopAction',          "Stop session",                        "",    AddiksDBGPApp.get().session_stop],
-    ['SessionStepIntoAction',      "Step into",                           "F5",  AddiksDBGPApp.get().session_step_into],
-    ['SessionStepOverAction',      "Step over",                           "F6",  AddiksDBGPApp.get().session_step_over],
-    ['SessionStepOutAction',       "Step out",                            "F7",  AddiksDBGPApp.get().session_step_out],
-    ['SessionRunAction',           "Run",                                 "F8",  AddiksDBGPApp.get().session_run],
-    ['SessionRunToEndAction',      "Run to end (ignore breakpoints)",     "F9",  AddiksDBGPApp.get().session_run_to_end],
-]
 
