@@ -14,7 +14,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-from gi.repository import GLib, Gtk, Gdk
+from gi.repository import GLib, Gtk
 from _thread import start_new_thread
 from gladehandler import GladeHandler
 from helpers import *
