@@ -14,14 +14,14 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-from gi.repository import GLib, Gtk
-from _thread import start_new_thread
-from gladehandler import GladeHandler
-from helpers import *
 import socket
 import base64
 import time
 import xml.etree.ElementTree as ElementTree
+from gi.repository import GLib, Gtk
+from _thread import start_new_thread
+from GladeHandler import GladeHandler
+from helpers import *
 addiksdbgp = __import__("addiks-dbgp")
 
 class DebugSession:
@@ -435,9 +435,9 @@ class DebugSession:
 
             if openTopFile and topStackFilepath != None:
                 GLib.idle_add(self.open_uri_resouce, topStackFilepath, topStackLineNr)
-         
+
             ### WATCHES
-   
+
             expandFullNames = []
 
             for definition in self._custom_watches:

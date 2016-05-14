@@ -14,21 +14,21 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-from gi.repository import GLib, Gtk, Gdk, GObject, Gedit, PeasGtk, Gio, GtkSource, GdkPixbuf, Notify
-from profilemanager import ProfileManager
-from session import DebugSession
-from helpers import *
-from inspect import getmodule
-from gladehandler import GladeHandler
 import os
 import random
 import time
-from time import sleep
 import subprocess
 import socket
+import xml.etree.ElementTree as ElementTree
+from helpers import *
+from inspect import getmodule
+from time import sleep
 from os.path import expanduser
 from _thread import start_new_thread
-import xml.etree.ElementTree as ElementTree
+from gi.repository import GLib, Gtk, Gdk, GObject, Gedit, PeasGtk, Gio, GtkSource, GdkPixbuf, Notify
+from ProfileManager import ProfileManager
+from DebugSession import DebugSession
+from GladeHandler import GladeHandler
 
 from AddiksDBGPApp import AddiksDBGPApp, ACTIONS
 

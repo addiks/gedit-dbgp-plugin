@@ -14,9 +14,9 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-from gi.repository import Gtk, Gdk, GObject, Gedit, Gio, GtkSource, GdkPixbuf
-from helpers import *
 import os
+from helpers import *
+from gi.repository import Gtk, Gdk, GObject, Gedit, Gio, GtkSource, GdkPixbuf
 from AddiksDBGPApp import AddiksDBGPApp
 
 class AddiksDBGPView(GObject.Object, Gedit.ViewActivatable):
@@ -108,7 +108,7 @@ class AddiksDBGPView(GObject.Object, Gedit.ViewActivatable):
 
     def _get_breakpoint_icon(self):
         if self._gutter_breakpoint_icon == None:
-            iconPath = os.path.dirname(__file__)+"/breakpoint.png"
+            iconPath = os.path.dirname(__file__)+"/images/breakpoint.png"
             gfile = Gio.File.new_for_path(iconPath)
             gicon = Gio.FileIcon.new(gfile)
             self._gutter_breakpoint_icon = gicon

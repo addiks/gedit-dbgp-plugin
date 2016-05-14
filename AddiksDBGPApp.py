@@ -14,18 +14,18 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-from gi.repository import GLib, Gtk, GObject, Gedit, Gio, Notify
-from profilemanager import ProfileManager
-from session import DebugSession
-from helpers import *
-from gladehandler import GladeHandler
 import os
 import time
-from time import sleep
 import socket
+import xml.etree.ElementTree as ElementTree
+from helpers import *
+from time import sleep
 from os.path import expanduser
 from _thread import start_new_thread
-import xml.etree.ElementTree as ElementTree
+from gi.repository import GLib, Gtk, GObject, Gedit, Gio, Notify
+from ProfileManager import ProfileManager
+from DebugSession import DebugSession
+from GladeHandler import GladeHandler
 
 ACTIONS = [
     ['DebugAction',                "Debugging",                           "",    None],

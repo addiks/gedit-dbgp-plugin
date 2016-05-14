@@ -14,13 +14,13 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+import os
 from gi.repository import Gtk, Gdk
 from _thread import start_new_thread
 from helpers import *
-from session import DebugSession
-from gladehandler import GladeHandler
-from pathmapping import PathMappingManager
-import os
+from DebugSession import DebugSession
+from GladeHandler import GladeHandler
+from PathMappingManager import PathMappingManager
 
 class ProfileManager:
     def __init__(self, plugin):

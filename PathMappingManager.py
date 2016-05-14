@@ -17,8 +17,8 @@
 import csv
 import os
 from gi.repository import Gtk, Gdk
-from gladehandler import GladeHandler
 from helpers import file_put_contents
+from GladeHandler import GladeHandler
 
 class PathMappingManager:
 

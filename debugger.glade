@@ -68,17 +68,17 @@
   <object class="GtkImage" id="imageStepInto">
     <property name="visible">True</property>
     <property name="can_focus">False</property>
-    <property name="pixbuf">step-into.png</property>
+    <property name="pixbuf">images/step-into.png</property>
   </object>
   <object class="GtkImage" id="imageStepOut">
     <property name="visible">True</property>
     <property name="can_focus">False</property>
-    <property name="pixbuf">step-out.png</property>
+    <property name="pixbuf">images/step-out.png</property>
   </object>
   <object class="GtkImage" id="imageStepOver">
     <property name="visible">True</property>
     <property name="can_focus">False</property>
-    <property name="pixbuf">step-over.png</property>
+    <property name="pixbuf">images/step-over.png</property>
   </object>
   <object class="GtkImage" id="imageStop">
     <property name="visible">True</property>
