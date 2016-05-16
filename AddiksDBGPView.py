@@ -25,7 +25,7 @@ class AddiksDBGPView(GObject.Object, Gedit.ViewActivatable):
     def __init__(self):
         GObject.Object.__init__(self)
         self._gutter_renderer = None
-        self._gutter_breakpoint_icon = None
+        self._gutter_breakpoint_icons = {}
         self._gutter_empty_pixbuf = None
         self.__drawArea = None
 
@@ -106,13 +106,17 @@ class AddiksDBGPView(GObject.Object, Gedit.ViewActivatable):
             self._gutter_renderer = renderer
         return self._gutter_renderer
 
-    def _get_breakpoint_icon(self):
-        if self._gutter_breakpoint_icon == None:
-            iconPath = os.path.dirname(__file__)+"/images/breakpoint.png"
+    def _get_breakpoint_icon(self, withCondition=False):
+        fileName = "breakpoint.png"
+        if withCondition:
+            fileName = "breakpoint-condition.png"
+
+        if fileName not in self._gutter_breakpoint_icons:
+            iconPath = os.path.dirname(__file__) + "/images/" + fileName
             gfile = Gio.File.new_for_path(iconPath)
             gicon = Gio.FileIcon.new(gfile)
-            self._gutter_breakpoint_icon = gicon
-        return self._gutter_breakpoint_icon
+            self._gutter_breakpoint_icons[fileName] = gicon
+        return self._gutter_breakpoint_icons[fileName]
 
     def _get_empty_pixbuf(self):
         if self._gutter_empty_pixbuf == None:
@@ -123,25 +127,37 @@ class AddiksDBGPView(GObject.Object, Gedit.ViewActivatable):
 
     def _on_breakpoint_gutter_query_activatable(self, renderer, textIter, area, event):
         if event.get_event_type() == Gdk.EventType.BUTTON_PRESS:
+            isButton, button = event.get_button()
             document = self.view.get_buffer()
             if document.get_location() != None:
-                filePath = document.get_location().get_path()   
+                gutter = self.view.get_gutter(Gtk.TextWindowType.LEFT)
+                filePath = document.get_location().get_path()
                 line = textIter.get_line()+1 
 
-                AddiksDBGPApp.get().toggle_breakpoint(filePath, line)
+                if button == 3:
+                    builder = AddiksDBGPApp.get().getGladeBuilder()
+                    menuBreakpoints = builder.get_object("menuBreakpoints")
+                    menuBreakpoints.popup(None, None, None, None, button, event.time)
+                    menuBreakpoints.addiks_window = None
+                    menuBreakpoints.addiks_filePath = filePath
+                    menuBreakpoints.addiks_line = line
+                    menuBreakpoints.addiks_gutter = gutter
 
-                # force redraw
-                renderer = self.get_gutter_renderer()
-                gutter = self.view.get_gutter(Gtk.TextWindowType.LEFT)
-                gutter.queue_draw()
+                else:
+                    AddiksDBGPApp.get().toggle_breakpoint(filePath, line)
+                    gutter.queue_draw() # force redraw
+
+                return True
 
     def _on_breakpoint_gutter_query_data(self, renderer, textIterStart, textIterEnd, state):
         document = self.view.get_buffer()
         if document.get_location() != None:
             filePath = document.get_location().get_path()
-            if textIterStart.get_line()+1 in AddiksDBGPApp.get().get_breakpoints(filePath):
-                renderer.set_gicon(self._get_breakpoint_icon())
-            else:  
+            line = textIterStart.get_line()+1
+            if line in AddiksDBGPApp.get().get_breakpoints(filePath):
+                hasCondition = AddiksDBGPApp.get().breakpoint_has_condition(filePath, line)
+                renderer.set_gicon(self._get_breakpoint_icon(hasCondition))
+            else:
                 renderer.set_pixbuf(self._get_empty_pixbuf())
 
     def update_stack_marks(self, document=None, foo=None, bar=None):

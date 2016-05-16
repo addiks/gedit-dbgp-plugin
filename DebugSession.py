@@ -115,10 +115,11 @@ class DebugSession:
         breakpoints = addiksdbgp.AddiksDBGPApp.get().get_all_breakpoints()
         for filePath in breakpoints:
             for line in breakpoints[filePath]:
+                condition = breakpoints[filePath][line]
                 self.set_breakpoint({
-                    'type':     'line',
-                    'filename': filePath,
-                    'lineno':   line,
+                    'filename':   filePath,
+                    'lineno':     line,
+                    'expression': condition,
                 })
 
         self.__send_command("step_into")
@@ -178,10 +179,12 @@ class DebugSession:
         if definition not in self._custom_watches:
             self._custom_watches.append(definition)
             self.__update_view()
+        return None
 
     def remove_watch(self, definition):
-        self._custom_watches.remove(definition)
-        self.__update_view()
+        if definition in self._custom_watches:
+            self._custom_watches.remove(definition)
+            self.__update_view()
 
     def clear_watches(self):
         self._custom_watches = []
@@ -621,8 +624,12 @@ class DebugSession:
             addiksdbgp.AddiksDBGPApp.get().open_window_file(filePath, line)
 
     def __get_breakpoint_arguments(self, input_options={}):
+        defaultType = "line"
+        if "expression" in input_options and input_options['expression'] != None:
+            defaultType = "conditional"
+
         options = {
-            'type':          "line", # line, call, return, exception, conditional, watch
+            'type':          defaultType, # line, call, return, exception, conditional, watch
             'filename':      "",
             'lineno':        1,
             'state':         "enabled",
@@ -635,7 +642,7 @@ class DebugSession:
         }
         options.update(input_options)
 
-        if options['type'] not in ['line', 'call', 'return', 'exception', 'condition', 'watch']:
+        if options['type'] not in ['line', 'call', 'return', 'exception', 'conditional', 'watch']:
             raise Exception("Invalid breakpoint type '"+options['type']+"'!")
 
         if len(options['filename'])>1:
@@ -653,10 +660,10 @@ class DebugSession:
         if options['state'] != 'enabled':
             arguments.append('-s ' + options['state'])
 
-        if options['type'] in ['line', 'condition']:
+        if options['type'] in ['line', 'conditional']:
             arguments.append('-f ' + options['filename'])
 
-        if options['type'] == 'line':
+        if options['type'] in ['line', 'conditional']:
             arguments.append('-n ' + str(options['lineno']))
 
         if options['type'] in ['call', 'return']:
@@ -668,7 +675,7 @@ class DebugSession:
         if options['type'] in ['conditional', 'watch']:
             expression = options['expression']
 
-        if options['hit_value'] != '0':
+        if len(options['hit_condition']) > 0:
             arguments.append('-h ' + options['hit_value'])
             arguments.append('-o ' + options['hit_condition'])
 

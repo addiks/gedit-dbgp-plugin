@@ -125,7 +125,7 @@ class AddiksDBGPApp(GObject.Object, Gedit.AppActivatable):
 
     def show_breakpoints(self, foo=None, bar=None):
 
-        builder = self._getGladeBuilder()
+        builder = self.getGladeBuilder()
 
         windowBreakpoints = builder.get_object("windowBreakpoints")
         liststoreBreakpoints = builder.get_object("liststoreBreakpoints")
@@ -402,7 +402,7 @@ class AddiksDBGPApp(GObject.Object, Gedit.AppActivatable):
 
     def _get_breakpoints_filepath(self):
         userDir = os.path.expanduser("~")
-        filePath = userDir + "/.local/share/addiks/gedit/xdebug/breakpoints"
+        filePath = userDir + "/.local/share/gedit/addiks/xdebug/breakpoints"
         return filePath
 
     def _save_breakpoints(self):
@@ -425,26 +425,53 @@ class AddiksDBGPApp(GObject.Object, Gedit.AppActivatable):
     def get_breakpoints(self, filePath):
         breakpoints = self.get_all_breakpoints()
         if filePath not in breakpoints:
-            breakpoints[filePath] = []
+            breakpoints[filePath] = {}
         return breakpoints[filePath]
 
     def toggle_breakpoint(self, filePath, line):
         breakpoints = self.get_all_breakpoints()
         if filePath not in breakpoints:
-            breakpoints[filePath] = []
+            breakpoints[filePath] = {}
         if line in breakpoints[filePath]:
-            breakpoints[filePath].remove(line)
+            del breakpoints[filePath][line]
             for session in self.get_active_sessions():
                 start_new_thread(session.remove_breakpoint_by_file_line, (filePath, line, ))
         else:
-            breakpoints[filePath].append(line)
+            breakpoints[filePath][line] = None
             for session in self.get_active_sessions():
                 start_new_thread(session.set_breakpoint, ({
-                    'type':     'line',
-                    'filename': filePath,
-                    'lineno':   line,
+                    'filename':   filePath,
+                    'lineno':     line,
+                    'expression': None
                 }, ))
         self._save_breakpoints()
+
+    def set_breakpoint_condition(self, filePath, line, condition=None):
+        breakpoints = self.get_all_breakpoints()
+        if filePath not in breakpoints:
+            breakpoints[filePath] = {}
+        breakpoints[filePath][line] = condition
+        for session in self.get_active_sessions():
+            start_new_thread(session.set_breakpoint, ({
+                'filename':   filePath,
+                'lineno':     line,
+                'expression': condition
+            }, ))
+        self._save_breakpoints()
+
+    def get_breakpoint_condition(self, filePath, line, condition=None):
+        breakpoints = self.get_all_breakpoints()
+        condition = None
+        if filePath in breakpoints and line in breakpoints[filePath]:
+            condition = breakpoints[filePath][line]
+        return condition
+
+    def breakpoint_has_condition(self, filePath, line):
+        breakpoints = self.get_all_breakpoints()
+        hasCondition = False
+        if filePath in breakpoints and line in breakpoints[filePath]:
+            hasCondition = breakpoints[filePath][line] != None
+        return hasCondition
 
     ### PATHS
 
@@ -454,13 +481,13 @@ class AddiksDBGPApp(GObject.Object, Gedit.AppActivatable):
         return basedir
 
     ### GLADE
-   
-    def _getGladeHandler(self):
+
+    def getGladeHandler(self):
         if self._glade_handler == None:
             self.__initGlade()
         return self._glade_handler
 
-    def _getGladeBuilder(self):
+    def getGladeBuilder(self):
         if self._glade_builder == None:
             self.__initGlade()
         return self._glade_builder

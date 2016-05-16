@@ -14,9 +14,10 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-from gi.repository import GLib, Gtk
+from gi.repository import GLib, Gtk, Gdk
 from helpers import *
 from _thread import start_new_thread
+import AddiksDBGPApp
 import traceback
 
 class GladeHandler:
@@ -95,7 +96,7 @@ class GladeHandler:
 
     def onShowPathMappingWindow(self, button=None):
         self._profile_manager.get_pathmapping_manager().show()
-        
+
     ### SESSION
 
     def onRun(self, button=None):
@@ -152,6 +153,51 @@ class GladeHandler:
             definition = treestoreWatches.get_value(treeIter, 0)
             self._session.remove_watch(definition)
 
+    def onDuplicateWatch(self, button=None):
+        builder = self._builder
+        treeviewWatches  = builder.get_object("treeviewWatches")
+        treestoreWatches = builder.get_object("treestoreWatches")
+
+        selection = treeviewWatches.get_selection()
+
+        store, selected_rows = selection.get_selected_rows()
+
+        for path in selected_rows:
+            treeIter = treestoreWatches.get_iter(path)
+            definition = treestoreWatches.get_value(treeIter, 0)
+            self._session.add_watch(definition)
+
+    def onEditWatchDefinition(self, button=None):
+        builder = self._builder
+        treeviewWatches  = builder.get_object("treeviewWatches")
+        treestoreWatches = builder.get_object("treestoreWatches")
+
+        selection = treeviewWatches.get_selection()
+
+        store, selected_rows = selection.get_selected_rows()
+
+        for path in selected_rows:
+            treeIter = treestoreWatches.get_iter(path)
+            definition = treestoreWatches.get_value(treeIter, 0)
+
+            dialog = Gtk.Dialog("Edit watch", builder.get_object("windowSession"))
+            dialog.add_button(Gtk.STOCK_CANCEL, Gtk.ResponseType.CANCEL)
+            dialog.add_button(Gtk.STOCK_OK, Gtk.ResponseType.OK)
+            dialogBox = dialog.get_content_area()
+
+            userEntry = Gtk.Entry()
+            userEntry.set_text(definition)
+            dialogBox.pack_end(userEntry, False, False, 0)
+
+            dialog.show_all()
+            response = dialog.run()
+            newDefinition = userEntry.get_text()
+            dialog.destroy()
+
+            if (response == Gtk.ResponseType.OK) and (newDefinition != ''):
+                self._session.remove_watch(definition)
+                self._session.add_watch(newDefinition)
+
     def onEditWatch(self, button=None):
         builder = self._builder
         treeviewWatches  = builder.get_object("treeviewWatches")
@@ -166,7 +212,7 @@ class GladeHandler:
             fullName   = treestoreWatches.get_value(treeIter, 2)
             value      = treestoreWatches.get_value(treeIter, 1)
 
-            dialog = Gtk.Dialog("Add watch", builder.get_object("windowSession"))
+            dialog = Gtk.Dialog("Edit watch", builder.get_object("windowSession"))
             dialog.add_button(Gtk.STOCK_CANCEL, Gtk.ResponseType.CANCEL)
             dialog.add_button(Gtk.STOCK_OK,     Gtk.ResponseType.OK)
             dialogBox = dialog.get_content_area()
@@ -201,12 +247,16 @@ class GladeHandler:
 
             dialog.show_all()
             response = dialog.run()
-            newValue = userEntryTextBuffer.get_text()
-            newType = types[typeComboBox.get_active()]
-            dialog.destroy()
 
-            if (response == Gtk.ResponseType.OK) and (newValue != ''):
-                self._session.set_property(fullName, newType, newValue)
+            if response == Gtk.ResponseType.OK:
+                start = userEntryTextBuffer.get_start_iter()
+                end = userEntryTextBuffer.get_end_iter()
+                newValue = userEntryTextBuffer.get_text(start, end, True)
+                newType = types[typeComboBox.get_active()]
+
+                if newValue != '':
+                    self._session.set_property(fullName, newType, newValue)
+            dialog.destroy()
 
     def onWatchExpanded(self, treeView=None, treeIter=None, treePath=None, userData=None):
         builder = self._builder
@@ -223,6 +273,17 @@ class GladeHandler:
 
         fullName = treestoreWatches.get_value(treeIter, 2)
         self._session.collapse_watch(fullName)
+
+    def onWatchButtonPress(self, treeView=None, event=None, userData=None):
+        builder = self._builder
+        if event.type == Gdk.EventType.BUTTON_PRESS and event.button == 3:
+            selection = treeView.get_selection()
+            path, column, x, y = treeView.get_path_at_pos(event.x, event.y)
+            if type(path) is Gtk.TreePath:
+                selection.unselect_all()
+                selection.select_path(path)
+                menuWatchesContext = builder.get_object("menuWatchesContext")
+                menuWatchesContext.popup(None, None, None, None, event.button, event.time)
 
     def onStackEntryOpen(self, treeView=None, rowNr=0, treeViewColumn=None):
         builder = self._builder
@@ -302,7 +363,7 @@ class GladeHandler:
         rowIter = self._watches[fullName]
         rowPath = treestoreWatches.get_path(rowIter)
         treeviewWatches.expand_row(rowPath, False)
-    
+
     def clearStack(self):
         GLib.idle_add(self._do_clearStack)
 
@@ -313,7 +374,7 @@ class GladeHandler:
 
     def addStackRow(self, filepath, line, where):
         GLib.idle_add(self._do_addStackRow, filepath, line, where)
-        
+
     def _do_addStackRow(self, filepath, line, where):
         builder = self._builder
         liststoreStack = builder.get_object("liststoreStack")
@@ -398,6 +459,48 @@ class GladeHandler:
         treeviewBreakpoints = builder.get_object("treeviewBreakpoints")
 
         self._plugin.clear_breakpoints()
+
+    def onBreakpointSetCondition(self, menuItem=None, userData=None):
+        builder = self._builder
+
+        menuBreakpoints = builder.get_object("menuBreakpoints")
+
+        window = menuBreakpoints.addiks_window
+        filePath = menuBreakpoints.addiks_filePath
+        line = menuBreakpoints.addiks_line
+        condition = AddiksDBGPApp.AddiksDBGPApp.get().get_breakpoint_condition(filePath, line)
+
+        dialog = Gtk.Dialog("Set breakpoint condition", window)
+        dialog.add_button(Gtk.STOCK_CANCEL, Gtk.ResponseType.CANCEL)
+        dialog.add_button(Gtk.STOCK_OK, Gtk.ResponseType.OK)
+        dialogBox = dialog.get_content_area()
+
+        conditionEntry  = Gtk.Entry()
+
+        if condition != None:
+            conditionEntry.set_text(condition)
+
+        dialogBox.pack_end(conditionEntry,  False, False, 0)
+
+        dialog.show_all()
+        response   = dialog.run()
+        condition  = conditionEntry.get_text()
+        dialog.destroy()
+
+        if response == Gtk.ResponseType.OK and condition != '':
+            AddiksDBGPApp.AddiksDBGPApp.get().set_breakpoint_condition(filePath, line, condition)
+            menuBreakpoints.addiks_gutter.queue_draw() # force redraw
+
+    def onBreakpointRemoveCondition(self, menuItem=None, userData=None):
+        builder = self._builder
+
+        menuBreakpoints = builder.get_object("menuBreakpoints")
+
+        filePath = menuBreakpoints.addiks_filePath
+        line = menuBreakpoints.addiks_line
+
+        AddiksDBGPApp.AddiksDBGPApp.get().set_breakpoint_condition(filePath, line, None)
+        menuBreakpoints.addiks_gutter.queue_draw() # force redraw
 
 
 

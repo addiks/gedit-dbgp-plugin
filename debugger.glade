@@ -15,6 +15,100 @@
     <property name="step_increment">1</property>
     <property name="page_increment">1</property>
   </object>
+  <object class="GtkImage" id="image1">
+    <property name="visible">True</property>
+    <property name="can_focus">False</property>
+    <property name="stock">gtk-edit</property>
+  </object>
+  <object class="GtkImage" id="image2">
+    <property name="visible">True</property>
+    <property name="can_focus">False</property>
+    <property name="stock">gtk-edit</property>
+  </object>
+  <object class="GtkImage" id="image3">
+    <property name="visible">True</property>
+    <property name="can_focus">False</property>
+    <property name="stock">gtk-remove</property>
+  </object>
+  <object class="GtkImage" id="image4">
+    <property name="visible">True</property>
+    <property name="can_focus">False</property>
+    <property name="stock">gtk-add</property>
+  </object>
+  <object class="GtkImage" id="image5">
+    <property name="visible">True</property>
+    <property name="can_focus">False</property>
+    <property name="stock">gtk-delete</property>
+  </object>
+  <object class="GtkImage" id="image6">
+    <property name="visible">True</property>
+    <property name="can_focus">False</property>
+    <property name="stock">gtk-copy</property>
+  </object>
+  <object class="GtkMenu" id="menuWatchesContext">
+    <property name="visible">True</property>
+    <property name="can_focus">False</property>
+    <child>
+      <object class="GtkImageMenuItem" id="menuitemWatchesContextEditDefinition">
+        <property name="label" translatable="yes">Edit definition</property>
+        <property name="visible">True</property>
+        <property name="can_focus">False</property>
+        <property name="image">image1</property>
+        <property name="use_stock">False</property>
+        <signal name="activate" handler="onEditWatchDefinition" swapped="no"/>
+      </object>
+    </child>
+    <child>
+      <object class="GtkImageMenuItem" id="menuitemWatchesContextEditValue">
+        <property name="label" translatable="yes">Edit value</property>
+        <property name="visible">True</property>
+        <property name="can_focus">False</property>
+        <property name="image">image2</property>
+        <property name="use_stock">False</property>
+        <signal name="activate" handler="onEditWatch" swapped="no"/>
+      </object>
+    </child>
+    <child>
+      <object class="GtkImageMenuItem" id="menuitemWatchesContextAdd">
+        <property name="label" translatable="yes">Add</property>
+        <property name="visible">True</property>
+        <property name="can_focus">False</property>
+        <property name="image">image4</property>
+        <property name="use_stock">False</property>
+        <signal name="activate" handler="onAddWatch" swapped="no"/>
+      </object>
+    </child>
+    <child>
+      <object class="GtkImageMenuItem" id="menuitemWatchesContextDelete">
+        <property name="label" translatable="yes">Delete</property>
+        <property name="visible">True</property>
+        <property name="can_focus">False</property>
+        <property name="image">image3</property>
+        <property name="use_stock">False</property>
+        <signal name="activate" handler="onRemoveWatch" swapped="no"/>
+      </object>
+    </child>
+    <child>
+      <object class="GtkImageMenuItem" id="menuitemWatchesContextDeleteAll">
+        <property name="label" translatable="yes">Delete all</property>
+        <property name="visible">True</property>
+        <property name="can_focus">False</property>
+        <property name="image">image5</property>
+        <property name="use_stock">False</property>
+        <signal name="activate" handler="onClearWatches" swapped="no"/>
+      </object>
+    </child>
+    <child>
+      <object class="GtkImageMenuItem" id="menuitemWatchesContextDuplicate">
+        <property name="label" translatable="yes">Duplicate</property>
+        <property name="visible">True</property>
+        <property name="can_focus">False</property>
+        <property name="image">image6</property>
+        <property name="use_stock">False</property>
+        <signal name="activate" handler="onDuplicateWatch" swapped="no"/>
+      </object>
+    </child>
+  </object>
   <object class="GtkImage" id="imageAddProfile">
     <property name="visible">True</property>
     <property name="can_focus">False</property>
@@ -724,6 +818,28 @@
       <column type="gchararray"/>
     </columns>
   </object>
+  <object class="GtkMenu" id="menuBreakpoints">
+    <property name="visible">True</property>
+    <property name="can_focus">False</property>
+    <child>
+      <object class="GtkMenuItem" id="menuitemBreakpointsSetCondition">
+        <property name="visible">True</property>
+        <property name="can_focus">False</property>
+        <property name="label" translatable="yes">Set condition</property>
+        <property name="use_underline">True</property>
+        <signal name="activate" handler="onBreakpointSetCondition" swapped="no"/>
+      </object>
+    </child>
+    <child>
+      <object class="GtkMenuItem" id="menuitemBreakpointsRemoveCondition">
+        <property name="visible">True</property>
+        <property name="can_focus">False</property>
+        <property name="label" translatable="yes">Remove condition</property>
+        <property name="use_underline">True</property>
+        <signal name="activate" handler="onBreakpointRemoveCondition" swapped="no"/>
+      </object>
+    </child>
+  </object>
   <object class="GtkTreeStore" id="treestoreWatches">
     <columns>
       <!-- column-name definition -->
@@ -845,6 +961,7 @@
                 <property name="visible">True</property>
                 <property name="can_focus">True</property>
                 <property name="receives_default">True</property>
+                <property name="tooltip_text" translatable="yes">Run to end (skip breakpoints)</property>
                 <property name="image">imageRunToEnd</property>
                 <signal name="clicked" handler="onRunToEnd" swapped="no"/>
               </object>
@@ -1088,6 +1205,7 @@
                                 <property name="model">treestoreWatches</property>
                                 <property name="search_column">0</property>
                                 <property name="tooltip_column">0</property>
+                                <signal name="button-press-event" handler="onWatchButtonPress" swapped="no"/>
                                 <signal name="row-collapsed" handler="onWatchCollapsed" swapped="no"/>
                                 <signal name="row-expanded" handler="onWatchExpanded" swapped="no"/>
                                 <child internal-child="selection">
