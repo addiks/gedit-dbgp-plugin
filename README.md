@@ -23,7 +23,10 @@ If you do not know what that means, see the file 'LICENCE'.
  * python-3
  * notify-osd (will be optional in a future release, but not yet)
 
-This plugin is only tested in ubuntu-14.04, but others should also work (in theory).
+I have successfully tested this plugin under the following setups:
+ * Ubuntu 14.04 / Gedit 3.10
+ * Ubuntu 14.04 / Gedit 3.12
+ * Fedora 23 / Gedit 3.18
 
 ## Download
 
