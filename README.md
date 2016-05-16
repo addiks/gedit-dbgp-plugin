@@ -8,7 +8,7 @@ This plugin allows you to use gedit-3 as a debugging-client using the DBGp proto
  * Using DBGp-proxies
  * Multiple profiles
  * Path mapping
- * Breakpoints
+ * Breakpoints (conditional)
  * Inspecting and manipulating variables
  * Stepping through your code
 
