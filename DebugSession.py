@@ -346,7 +346,8 @@ class DebugSession:
                     break
                 stack.append(stackXml.attrib)
             if len(stack)>0 and 'level' in stack[0]:
-                stack.sort(key=lambda entry: entry['level'], reverse=True)
+                stack.sort(key=lambda entry: int(entry['level']), reverse=True)
+            print(stack)
         if glib_idle_add != None:
             GLib.idle_add(glib_idle_add, stack)
         return stack
