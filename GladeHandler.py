@@ -19,6 +19,7 @@ from helpers import *
 from _thread import start_new_thread
 import AddiksDBGPApp
 import traceback
+import time
 
 class GladeHandler:
     def __init__(self, plugin, builder, profile_manager=None, session=None, path_mapping_manager=None):
@@ -28,6 +29,7 @@ class GladeHandler:
         self._builder              = builder
         self._session              = session
         self._watches              = {}
+        self._watches_placeholder  = {}
 
     def onCloseWindow(self, widget=None, data=None):
         widget.hide()
@@ -325,24 +327,34 @@ class GladeHandler:
         builder = self._builder
         treestoreWatches = builder.get_object("treestoreWatches")
         treestoreWatches.clear()
+        self._watches = {}
+        self._watches_placeholder = {}
 
     def addWatchRow(self, fullName=None, title=None, value=None, parentFullName=None):
         GLib.idle_add(self._do_addWatchRow, fullName, title, value, parentFullName)
 
     def _do_addWatchRow(self, fullName=None, title=None, value=None, parentFullName=None):
-        parentIter = None
-        if parentFullName != None:
-            parentIter = self._watches[parentFullName]
+        if fullName not in self._watches or fullName is None:
+            parentIter = None
+            if parentFullName != None:
+                parentIter = self._watches[parentFullName]
 
-        builder = self._builder
-        treestoreWatches = builder.get_object("treestoreWatches")
-        rowIter = treestoreWatches.append(parentIter)
+            builder = self._builder
+            treestoreWatches = builder.get_object("treestoreWatches")
 
-        if fullName != None:
-            self._watches[fullName] = rowIter
-            treestoreWatches.set_value(rowIter, 0, title)
-            treestoreWatches.set_value(rowIter, 1, value)
-            treestoreWatches.set_value(rowIter, 2, fullName)
+            if fullName != None:
+                rowIter = treestoreWatches.append(parentIter)
+                self._watches[fullName] = rowIter
+                treestoreWatches.set_value(rowIter, 0, title)
+                treestoreWatches.set_value(rowIter, 1, value)
+                treestoreWatches.set_value(rowIter, 2, fullName)
+                if parentFullName in self._watches_placeholder:
+                    treestoreWatches.remove(self._watches_placeholder[parentFullName])
+                    del self._watches_placeholder[parentFullName]
+
+            elif parentFullName not in self._watches_placeholder:
+                rowIter = treestoreWatches.append(parentIter)
+                self._watches_placeholder[parentFullName] = rowIter
 
     def setWatchRowValue(self, fullName, value):
         GLib.idle_add(self._do_setWatchRowValue, fullName, value)

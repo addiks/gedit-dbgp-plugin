@@ -198,14 +198,15 @@ class DebugSession:
         return self._types
 
     def expand_watch(self, fullName):
-        if fullName not in self._expanded_watches:
-            self._expanded_watches.append(fullName)
-            self.__update_view()
+        userInterface = self._getGladeHandler()
+        responseXml = self.get_property(fullName)
+        userInterface.setWatchRowValue(fullName, self.__get_value_by_propertyXml(responseXml, fullName, []))
 
     def collapse_watch(self, fullName):
-        if fullName in self._expanded_watches:
-            self._expanded_watches.remove(fullName)
-            self.__update_view()
+        #if fullName in self._expanded_watches:
+        #    self._expanded_watches.remove(fullName)
+        #    self.__update_view()
+        pass
 
     def __hideWindow(self):
         builder = self._getGladeBuilder()
@@ -347,7 +348,6 @@ class DebugSession:
                 stack.append(stackXml.attrib)
             if len(stack)>0 and 'level' in stack[0]:
                 stack.sort(key=lambda entry: int(entry['level']), reverse=True)
-            print(stack)
         if glib_idle_add != None:
             GLib.idle_add(glib_idle_add, stack)
         return stack
@@ -392,9 +392,7 @@ class DebugSession:
                 GLib.idle_add(view.update_stack_marks)
 
     def __update_view(self, openTopFile=False):
-
         try:
-
             ### CLEANUP
 
             userInterface = self._getGladeHandler()
@@ -555,8 +553,11 @@ class DebugSession:
                     return self.__readXmlElementContent(childPropertyXml)
             else:
                 userInterface.addWatchRow(None, None, None, parentFullName)
-            return originalDataType + "(" + propertyXml.attrib['numchildren'] + ")"
-    
+            if 'numchildren' in propertyXml.attrib:
+                return originalDataType + "(" + propertyXml.attrib['numchildren'] + ")"
+            else:
+                return originalDataType
+
         elif dataType in ['string', 'float', 'int']:
             return self.__readXmlElementContent(propertyXml)
 
@@ -732,7 +733,7 @@ class DebugSession:
             dataBlock = clientSocket.recv(pendingDataSize).decode("utf-8")
             pendingDataSize -= len(dataBlock)
             xmlData += dataBlock
-    
+
         endingNullByte = clientSocket.recv(1)
 
         xmlData = xmlData.replace("\\n", "\n")
