@@ -62,7 +62,6 @@ class DebugSession:
         self._status = 'starting'
         self._transaction_id_counter = 1
         self._custom_watches = []
-        self._expanded_watches = []
         self._path_mapping = None
         self._prepared_stack = []
 
@@ -137,7 +136,6 @@ class DebugSession:
         builder = self._getGladeBuilder()
         window = builder.get_object("windowSession")
         window.set_title("Running process: " + self._options['idekey']);
-     #   window.set_keep_above(True)
         accelGroup = addiksdbgp.AddiksDBGPApp.get().get_all_windows()[0].get_accel_group()
         if accelGroup != None:
             window.add_accel_group(accelGroup)
@@ -188,7 +186,6 @@ class DebugSession:
 
     def clear_watches(self):
         self._custom_watches = []
-        self._expanded_watches = []
         self.__update_view()
 
     def get_watches(self):
@@ -199,13 +196,15 @@ class DebugSession:
 
     def expand_watch(self, fullName):
         userInterface = self._getGladeHandler()
+        responseXml = self.eval_expression(fullName)
+        userInterface.setWatchRowValue(fullName, self.__get_value_by_propertyXml(responseXml, fullName, [], propertyType="watch"))
+
+    def expand_property(self, fullName):
+        userInterface = self._getGladeHandler()
         responseXml = self.get_property(fullName)
-        userInterface.setWatchRowValue(fullName, self.__get_value_by_propertyXml(responseXml, fullName, []))
+        userInterface.setWatchRowValue(fullName, self.__get_value_by_propertyXml(responseXml, fullName, [], propertyType="property"))
 
     def collapse_watch(self, fullName):
-        #if fullName in self._expanded_watches:
-        #    self._expanded_watches.remove(fullName)
-        #    self.__update_view()
         pass
 
     def __hideWindow(self):
@@ -375,7 +374,9 @@ class DebugSession:
         return responseXml
 
     def eval_expression(self, expression):
-        return self.__send_command("eval", [], expression)
+        responseXml = self.__send_command("eval", [], expression)
+        if len(responseXml)>0:
+            return responseXml[0]
 
     ### HELPERS
 
@@ -445,25 +446,21 @@ class DebugSession:
             for definition in self._custom_watches:
                 responseXml = self.eval_expression(definition)
                 if len(responseXml) > 1:
-                    userInterface.addWatchRow(definition, definition, "array")
+                    userInterface.addWatchRow(definition, definition, "array", None, "watch")
                     index = 0
                     for propertyXml in responseXml:
                         fullName, name = self.__readXmlElementNames(propertyXml)
 
-                        if fullName in self._expanded_watches:
-                            expandFullNames.append(fullName)
-                            propertyXml = self.get_property(fullName)
-
                         fullName = definition+"["+str(index)+"]"
-                        userInterface.addWatchRow(fullName, str(index), "array")
-                        userInterface.setWatchRowValue(fullName, self.__get_value_by_propertyXml(propertyXml, fullName, expandFullNames))
+                        userInterface.addWatchRow(fullName, str(index), "array", None, "watch")
+                        userInterface.setWatchRowValue(fullName, self.__get_value_by_propertyXml(propertyXml, fullName, expandFullNames, propertyType="watch"))
 
                         index += 1
 
                 elif len(responseXml) == 1:
                     propertyXml = responseXml[0]
-                    userInterface.addWatchRow(definition, definition)
-                    userInterface.setWatchRowValue(definition, self.__get_value_by_propertyXml(propertyXml, definition, expandFullNames))
+                    userInterface.addWatchRow(definition, definition, None, None, "watch")
+                    userInterface.setWatchRowValue(definition, self.__get_value_by_propertyXml(propertyXml, definition, expandFullNames, propertyType="watch"))
 
             writtenFullNames = []
             contextNames = self.get_context_names()
@@ -475,12 +472,7 @@ class DebugSession:
                     fullName, name = self.__readXmlElementNames(propertyXml)
 
                     if fullName != None and fullName not in writtenFullNames:
-
-                        if fullName in self._expanded_watches:
-                            expandFullNames.append(fullName)
-                            propertyXml = self.get_property(fullName)
-
-                        userInterface.addWatchRow(fullName, name)
+                        userInterface.addWatchRow(fullName, name, None, None, "property")
                         userInterface.setWatchRowValue(fullName, self.__get_value_by_propertyXml(propertyXml, fullName, expandFullNames))
                         writtenFullNames.append(fullName)
 
@@ -493,7 +485,7 @@ class DebugSession:
             GLib.idle_add(self.__hideWindow)
             addiksdbgp.AddiksDBGPApp.get().remove_session(self)
 
-    def __get_value_by_propertyXml(self, propertyXml, parentFullName, expandFullNames=[], tryTypemapUpdate=True):
+    def __get_value_by_propertyXml(self, propertyXml, parentFullName, expandFullNames=[], tryTypemapUpdate=True, propertyType="property"):
         userInterface = self._getGladeHandler()
 
         tagName = propertyXml.tag
@@ -503,6 +495,9 @@ class DebugSession:
 
         if tagName == "error":
             return propertyXml[0].text
+
+        if 'type' not in propertyXml.attrib:
+            return "could not get value"
 
         dataType = propertyXml.attrib['type']
         originalDataType = dataType
@@ -521,14 +516,13 @@ class DebugSession:
 
                     fullName, name = self.__readXmlElementNames(childPropertyXml)
 
-                    if fullName in self._expanded_watches:
-                        expandFullNames.append(fullName)
-                        childPropertyXml = self.get_property(fullName)
+                    if propertyType == "watch":
+                        fullName = parentFullName + "->" + name # ??? How to determine what to do here? (This only works for PHP)
 
-                    userInterface.addWatchRow(fullName, name, None, parentFullName)
-                    userInterface.setWatchRowValue(fullName, self.__get_value_by_propertyXml(childPropertyXml, fullName, expandFullNames))
+                    userInterface.addWatchRow(fullName, name, None, parentFullName, propertyType)
+                    userInterface.setWatchRowValue(fullName, self.__get_value_by_propertyXml(childPropertyXml, fullName, expandFullNames, propertyType=propertyType))
             else:
-                userInterface.addWatchRow(None, None, None, parentFullName)
+                userInterface.addWatchRow(None, None, None, parentFullName, propertyType)
             return "object(" + propertyXml.attrib['numchildren'] + ") : " + propertyXml.attrib['classname']
 
         elif dataType == 'array': # like a list
@@ -543,16 +537,15 @@ class DebugSession:
                         contentFound = True
                         fullName, name = self.__readXmlElementNames(childPropertyXml)
 
-                        if fullName in self._expanded_watches:
-                            expandFullNames.append(fullName)
-                            childPropertyXml = self.get_property(fullName)
+                        if propertyType == "watch":
+                            fullName = parentFullName + "[" + name + "]"
 
-                        userInterface.addWatchRow(fullName, name, None, parentFullName)
-                        userInterface.setWatchRowValue(fullName, self.__get_value_by_propertyXml(childPropertyXml, fullName, expandFullNames))
+                        userInterface.addWatchRow(fullName, name, None, parentFullName, propertyType)
+                        userInterface.setWatchRowValue(fullName, self.__get_value_by_propertyXml(childPropertyXml, fullName, expandFullNames, propertyType=propertyType))
                 if not contentFound:
                     return self.__readXmlElementContent(childPropertyXml)
             else:
-                userInterface.addWatchRow(None, None, None, parentFullName)
+                userInterface.addWatchRow(None, None, None, parentFullName, propertyType)
             if 'numchildren' in propertyXml.attrib:
                 return originalDataType + "(" + propertyXml.attrib['numchildren'] + ")"
             else:
@@ -572,7 +565,7 @@ class DebugSession:
 
         if tryTypemapUpdate:
             self._update_typemap()
-            return self.__get_value_by_propertyXml(propertyXml, parentFullName, expandFullNames, False)
+            return self.__get_value_by_propertyXml(propertyXml, parentFullName, expandFullNames, False, propertyType=propertyType)
 
         content = self.__readXmlElementContent(propertyXml)
         if type(content) == str:

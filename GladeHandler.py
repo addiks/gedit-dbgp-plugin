@@ -166,8 +166,8 @@ class GladeHandler:
 
         for path in selected_rows:
             treeIter = treestoreWatches.get_iter(path)
-            definition = treestoreWatches.get_value(treeIter, 0)
-            self._session.add_watch(definition)
+            fullName = treestoreWatches.get_value(treeIter, 2)
+            self._session.add_watch(fullName)
 
     def onEditWatchDefinition(self, button=None):
         builder = self._builder
@@ -266,7 +266,11 @@ class GladeHandler:
         treestoreWatches = builder.get_object("treestoreWatches")
 
         fullName = treestoreWatches.get_value(treeIter, 2)
-        self._session.expand_watch(fullName)
+        rowType = treestoreWatches.get_value(treeIter, 3)
+        if rowType == "watch":
+            self._session.expand_watch(fullName)
+        else:
+            self._session.expand_property(fullName)
 
     def onWatchCollapsed(self, treeView=None, treeIter=None, treePath=None, userData=None):
         builder = self._builder
@@ -330,10 +334,10 @@ class GladeHandler:
         self._watches = {}
         self._watches_placeholder = {}
 
-    def addWatchRow(self, fullName=None, title=None, value=None, parentFullName=None):
-        GLib.idle_add(self._do_addWatchRow, fullName, title, value, parentFullName)
+    def addWatchRow(self, fullName=None, title=None, value=None, parentFullName=None, rowType="property"):
+        GLib.idle_add(self._do_addWatchRow, fullName, title, value, parentFullName, rowType)
 
-    def _do_addWatchRow(self, fullName=None, title=None, value=None, parentFullName=None):
+    def _do_addWatchRow(self, fullName=None, title=None, value=None, parentFullName=None, rowType="property"):
         if fullName not in self._watches or fullName is None:
             parentIter = None
             if parentFullName != None:
@@ -348,6 +352,7 @@ class GladeHandler:
                 treestoreWatches.set_value(rowIter, 0, title)
                 treestoreWatches.set_value(rowIter, 1, value)
                 treestoreWatches.set_value(rowIter, 2, fullName)
+                treestoreWatches.set_value(rowIter, 3, rowType)
                 if parentFullName in self._watches_placeholder:
                     treestoreWatches.remove(self._watches_placeholder[parentFullName])
                     del self._watches_placeholder[parentFullName]

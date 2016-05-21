@@ -848,6 +848,8 @@
       <column type="gchararray"/>
       <!-- column-name fullname -->
       <column type="gchararray"/>
+      <!-- column-name type -->
+      <column type="gchararray"/>
     </columns>
   </object>
   <object class="GtkWindow" id="windowSession">
@@ -1196,6 +1198,7 @@
                             <property name="visible">True</property>
                             <property name="can_focus">True</property>
                             <property name="shadow_type">in</property>
+                            <property name="kinetic_scrolling">False</property>
                             <child>
                               <object class="GtkTreeView" id="treeviewWatches">
                                 <property name="height_request">100</property>
@@ -1213,6 +1216,8 @@
                                 </child>
                                 <child>
                                   <object class="GtkTreeViewColumn" id="treeviewcolumnWatchesDefinition">
+                                    <property name="resizable">True</property>
+                                    <property name="sizing">autosize</property>
                                     <property name="min_width">150</property>
                                     <property name="title" translatable="yes">definition</property>
                                     <child>
@@ -1225,12 +1230,40 @@
                                 </child>
                                 <child>
                                   <object class="GtkTreeViewColumn" id="treeviewcolumnWatchesValue">
+                                    <property name="resizable">True</property>
+                                    <property name="sizing">autosize</property>
                                     <property name="min_width">150</property>
                                     <property name="title" translatable="yes">value</property>
                                     <child>
                                       <object class="GtkCellRendererText" id="cellrenderertextWatchesValue"/>
                                       <attributes>
                                         <attribute name="text">1</attribute>
+                                      </attributes>
+                                    </child>
+                                  </object>
+                                </child>
+                                <child>
+                                  <object class="GtkTreeViewColumn" id="treeviewcolumnWatchesFullname">
+                                    <property name="resizable">True</property>
+                                    <property name="sizing">autosize</property>
+                                    <property name="title" translatable="yes">fullname</property>
+                                    <child>
+                                      <object class="GtkCellRendererText" id="cellrenderertextWatchesFullname"/>
+                                      <attributes>
+                                        <attribute name="text">2</attribute>
+                                      </attributes>
+                                    </child>
+                                  </object>
+                                </child>
+                                <child>
+                                  <object class="GtkTreeViewColumn" id="treeviewcolumnWatchesType">
+                                    <property name="resizable">True</property>
+                                    <property name="sizing">autosize</property>
+                                    <property name="title" translatable="yes">type</property>
+                                    <child>
+                                      <object class="GtkCellRendererText" id="cellrenderertextWatchesType"/>
+                                      <attributes>
+                                        <attribute name="text">3</attribute>
                                       </attributes>
                                     </child>
                                   </object>
