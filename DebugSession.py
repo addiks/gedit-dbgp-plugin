@@ -444,23 +444,11 @@ class DebugSession:
             expandFullNames = []
 
             for definition in self._custom_watches:
-                responseXml = self.eval_expression(definition)
-                if len(responseXml) > 1:
-                    userInterface.addWatchRow(definition, definition, "array", None, "watch")
-                    index = 0
-                    for propertyXml in responseXml:
-                        fullName, name = self.__readXmlElementNames(propertyXml)
-
-                        fullName = definition+"["+str(index)+"]"
-                        userInterface.addWatchRow(fullName, str(index), "array", None, "watch")
-                        userInterface.setWatchRowValue(fullName, self.__get_value_by_propertyXml(propertyXml, fullName, expandFullNames, propertyType="watch"))
-
-                        index += 1
-
-                elif len(responseXml) == 1:
-                    propertyXml = responseXml[0]
-                    userInterface.addWatchRow(definition, definition, None, None, "watch")
-                    userInterface.setWatchRowValue(definition, self.__get_value_by_propertyXml(propertyXml, definition, expandFullNames, propertyType="watch"))
+                propertyXml = self.eval_expression(definition)
+                userInterface.addWatchRow(definition, definition, None, None, "watch")
+                value = self.__get_value_by_propertyXml(propertyXml, definition, expandFullNames, propertyType="watch")
+                print(value)
+                userInterface.setWatchRowValue(definition, value)
 
             writtenFullNames = []
             contextNames = self.get_context_names()
