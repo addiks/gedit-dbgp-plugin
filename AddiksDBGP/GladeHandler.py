@@ -15,9 +15,9 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 from gi.repository import GLib, Gtk, Gdk
-from helpers import *
+from AddiksDBGP.helpers import *
 from _thread import start_new_thread
-import AddiksDBGPApp
+import AddiksDBGP.AddiksDBGPApp
 import traceback
 import time
 

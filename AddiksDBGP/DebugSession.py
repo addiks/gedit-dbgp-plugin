@@ -20,8 +20,8 @@ import time
 import xml.etree.ElementTree as ElementTree
 from gi.repository import GLib, Gtk
 from _thread import start_new_thread
-from GladeHandler import GladeHandler
-from helpers import *
+from AddiksDBGP.GladeHandler import GladeHandler
+from AddiksDBGP.helpers import *
 addiksdbgp = __import__("addiks-dbgp")
 
 class DebugSession:
@@ -751,7 +751,7 @@ class DebugSession:
 
     def __initGlade(self):
         self._glade_builder = Gtk.Builder()
-        self._glade_builder.add_from_file(os.path.dirname(__file__)+"/debugger.glade")
+        self._glade_builder.add_from_file(os.path.dirname(__file__)+"/../addiks-dbgp.glade")
         self._glade_handler = GladeHandler(self._plugin, self._glade_builder, session=self)
         self._glade_builder.connect_signals(self._glade_handler)
 

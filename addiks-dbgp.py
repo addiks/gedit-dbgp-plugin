@@ -14,7 +14,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-from AddiksDBGPApp import AddiksDBGPApp
-from AddiksDBGPView import AddiksDBGPView
-from AddiksDBGPWindow import AddiksDBGPWindow
+from AddiksDBGP.AddiksDBGPApp import AddiksDBGPApp
+from AddiksDBGP.AddiksDBGPView import AddiksDBGPView
+from AddiksDBGP.AddiksDBGPWindow import AddiksDBGPWindow
 

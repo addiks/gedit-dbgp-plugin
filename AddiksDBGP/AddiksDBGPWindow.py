@@ -20,17 +20,16 @@ import time
 import subprocess
 import socket
 import xml.etree.ElementTree as ElementTree
-from helpers import *
 from inspect import getmodule
 from time import sleep
 from os.path import expanduser
 from _thread import start_new_thread
 from gi.repository import GLib, Gtk, Gdk, GObject, Gedit, PeasGtk, Gio, GtkSource, GdkPixbuf, Notify
-from ProfileManager import ProfileManager
-from DebugSession import DebugSession
-from GladeHandler import GladeHandler
-
-from AddiksDBGPApp import AddiksDBGPApp, ACTIONS
+from AddiksDBGP.helpers import *
+from AddiksDBGP.ProfileManager import ProfileManager
+from AddiksDBGP.DebugSession import DebugSession
+from AddiksDBGP.GladeHandler import GladeHandler
+from AddiksDBGP.AddiksDBGPApp import AddiksDBGPApp, ACTIONS
 
 class AddiksDBGPWindow(GObject.Object, Gedit.WindowActivatable):
     window = GObject.property(type=Gedit.Window)
@@ -60,7 +59,7 @@ class AddiksDBGPWindow(GObject.Object, Gedit.WindowActivatable):
         if "get_ui_manager" in dir(self.window):# build menu for gedit 3.10 (global menu per window)
             self._ui_manager = self.window.get_ui_manager()
             self._ui_manager.insert_action_group(self._actions)
-            self._ui_merge_id = self._ui_manager.add_ui_from_string(file_get_contents(plugin_path + "/menubar.3-10.xml"))
+            self._ui_merge_id = self._ui_manager.add_ui_from_string(file_get_contents(plugin_path + "/../menubar.3-10.xml"))
 
             debugMenu = self._ui_manager.get_widget("/ui/MenuBar/AddiksDbgpDebug").get_submenu()
 

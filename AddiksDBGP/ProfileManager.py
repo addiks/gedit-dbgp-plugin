@@ -17,10 +17,10 @@
 import os
 from gi.repository import Gtk, Gdk
 from _thread import start_new_thread
-from helpers import *
-from DebugSession import DebugSession
-from GladeHandler import GladeHandler
-from PathMappingManager import PathMappingManager
+from AddiksDBGP.helpers import *
+from AddiksDBGP.DebugSession import DebugSession
+from AddiksDBGP.GladeHandler import GladeHandler
+from AddiksDBGP.PathMappingManager import PathMappingManager
 
 class ProfileManager:
     def __init__(self, plugin):

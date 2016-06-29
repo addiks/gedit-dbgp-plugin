@@ -18,14 +18,14 @@ import os
 import time
 import socket
 import xml.etree.ElementTree as ElementTree
-from helpers import *
 from time import sleep
 from os.path import expanduser
 from _thread import start_new_thread
 from gi.repository import GLib, Gtk, GObject, Gedit, Gio, Notify
-from ProfileManager import ProfileManager
-from DebugSession import DebugSession
-from GladeHandler import GladeHandler
+from AddiksDBGP.helpers import *
+from AddiksDBGP.ProfileManager import ProfileManager
+from AddiksDBGP.DebugSession import DebugSession
+from AddiksDBGP.GladeHandler import GladeHandler
 
 ACTIONS = [
     ['DebugAction',                "Debugging",                           "",    None],
@@ -58,14 +58,18 @@ class AddiksDBGPApp(GObject.Object, Gedit.AppActivatable):
         AddiksDBGPApp.__instance = self
 
         if "extend_menu" in dir(self): # build menu for gedit 3.12 (one menu per application)
-            self.submenu_ext = self.extend_menu("tools-section-1")
             submenu = Gio.Menu()
             item = Gio.MenuItem.new_submenu(_("Debugging"), submenu)
-            self.submenu_ext.append_menu_item(item)
+
+            mainMenu = self.app.get_menubar()
+            mainMenu.append_item(item)
 
             for actionName, title, shortcut, callbackName in ACTIONS:
                 if callbackName != None:
                     item = Gio.MenuItem.new(title, "win.%s" % actionName)
+                    if len(shortcut):
+                        item.set_attribute_value("accel", GLib.Variant.new_string(shortcut))
+                        self.app.set_accels_for_action("win.%s" % actionName, [shortcut])
                     submenu.append_item(item)
 
     def do_deactivate(self):
@@ -494,7 +498,7 @@ class AddiksDBGPApp(GObject.Object, Gedit.AppActivatable):
 
     def __initGlade(self):
         self._glade_builder = Gtk.Builder()
-        self._glade_builder.add_from_file(os.path.dirname(__file__)+"/debugger.glade")
+        self._glade_builder.add_from_file(os.path.dirname(__file__)+"/../addiks-dbgp.glade")
         self._glade_handler = GladeHandler(self, self._glade_builder)
         self._glade_builder.connect_signals(self._glade_handler)
 

@@ -17,8 +17,8 @@
 import csv
 import os
 from gi.repository import Gtk, Gdk
-from helpers import file_put_contents
-from GladeHandler import GladeHandler
+from AddiksDBGP.helpers import file_put_contents
+from AddiksDBGP.GladeHandler import GladeHandler
 
 class PathMappingManager:
 
@@ -94,7 +94,7 @@ class PathMappingManager:
         if self._glade_builder == None:
             self._glade_builder = Gtk.Builder()
             self._glade_handler = GladeHandler(self._plugin, self._glade_builder, path_mapping_manager=self)
-            self._glade_builder.add_from_file(os.path.dirname(__file__)+"/debugger.glade")
+            self._glade_builder.add_from_file(os.path.dirname(__file__)+"/../addiks-dbgp.glade")
             self._glade_builder.connect_signals(self._glade_handler)
         return self._glade_builder
 

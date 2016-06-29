@@ -15,9 +15,9 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import os
-from helpers import *
 from gi.repository import Gtk, Gdk, GObject, Gedit, Gio, GtkSource, GdkPixbuf
-from AddiksDBGPApp import AddiksDBGPApp
+from AddiksDBGP.helpers import *
+from AddiksDBGP.AddiksDBGPApp import AddiksDBGPApp
 
 class AddiksDBGPView(GObject.Object, Gedit.ViewActivatable):
     view = GObject.property(type=Gedit.View)
@@ -112,7 +112,7 @@ class AddiksDBGPView(GObject.Object, Gedit.ViewActivatable):
             fileName = "breakpoint-condition.png"
 
         if fileName not in self._gutter_breakpoint_icons:
-            iconPath = os.path.dirname(__file__) + "/images/" + fileName
+            iconPath = os.path.dirname(__file__) + "/../images/" + fileName
             gfile = Gio.File.new_for_path(iconPath)
             gicon = Gio.FileIcon.new(gfile)
             self._gutter_breakpoint_icons[fileName] = gicon
