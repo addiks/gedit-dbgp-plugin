@@ -17,7 +17,7 @@
 from gi.repository import GLib, Gtk, Gdk
 from AddiksDBGP.helpers import *
 from _thread import start_new_thread
-import AddiksDBGP.AddiksDBGPApp
+from AddiksDBGP import AddiksDBGPApp
 import traceback
 import time
 
@@ -518,6 +518,3 @@ class GladeHandler:
 
         AddiksDBGPApp.AddiksDBGPApp.get().set_breakpoint_condition(filePath, line, None)
         menuBreakpoints.addiks_gutter.queue_draw() # force redraw
-
-
-
