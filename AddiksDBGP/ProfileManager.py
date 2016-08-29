@@ -42,7 +42,7 @@ class ProfileManager:
         self.load_profile(activeProfileName)
 
         self.__updateProfileList()
-        
+
         self._glade_handler.updateDbgpVisibility()
         window.show()
 
@@ -67,7 +67,7 @@ class ProfileManager:
         if self._glade_builder == None:
             self._glade_builder = Gtk.Builder()
             self._glade_handler = GladeHandler(self._plugin, self._glade_builder, profile_manager=self)
-            self._glade_builder.add_from_file(os.path.dirname(__file__)+"/debugger.glade")
+            self._glade_builder.add_from_file(os.path.dirname(__file__)+"/../addiks-dbgp.glade")
             self._glade_builder.connect_signals(self._glade_handler)
         return self._glade_builder
 
@@ -78,7 +78,7 @@ class ProfileManager:
     def load_profile(self, name):
         self._profile = self.get_profile(name)
         self._profile_name = name
-        
+
         builder = self._glade_builder
         builder.get_object("entryURL")          .set_text(  self._profile['url'])
         builder.get_object("entryDbgpHost")     .set_text(  self._profile['dbgp_host'])
@@ -144,7 +144,7 @@ class ProfileManager:
 
     def set_active_profile(self, profile_name):
         file_put_contents(self.__get_active_profile_filepath(), profile_name)
-        
+
     def get_active_profile(self):
         file_path = self.__get_active_profile_filepath()
         if not os.path.exists(file_path):
@@ -163,8 +163,3 @@ class ProfileManager:
 
     def __get_profiles_path(self):
         return self._plugin.get_data_dir() + "/debug-profiles/"
-    
-
-
-
-
