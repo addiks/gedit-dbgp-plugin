@@ -17,7 +17,6 @@
 from gi.repository import GLib, Gtk, Gdk
 from AddiksDBGP.helpers import *
 from _thread import start_new_thread
-from AddiksDBGP import AddiksDBGPApp
 import traceback
 import time
 
@@ -485,7 +484,7 @@ class GladeHandler:
         window = menuBreakpoints.addiks_window
         filePath = menuBreakpoints.addiks_filePath
         line = menuBreakpoints.addiks_line
-        condition = AddiksDBGPApp.AddiksDBGPApp.get().get_breakpoint_condition(filePath, line)
+        condition = self._plugin.get_breakpoint_condition(filePath, line)
 
         dialog = Gtk.Dialog("Set breakpoint condition", window)
         dialog.add_button(Gtk.STOCK_CANCEL, Gtk.ResponseType.CANCEL)
@@ -505,7 +504,7 @@ class GladeHandler:
         dialog.destroy()
 
         if response == Gtk.ResponseType.OK and condition != '':
-            AddiksDBGPApp.AddiksDBGPApp.get().set_breakpoint_condition(filePath, line, condition)
+            self._plugin.set_breakpoint_condition(filePath, line, condition)
             menuBreakpoints.addiks_gutter.queue_draw() # force redraw
 
     def onBreakpointRemoveCondition(self, menuItem=None, userData=None):
@@ -516,5 +515,5 @@ class GladeHandler:
         filePath = menuBreakpoints.addiks_filePath
         line = menuBreakpoints.addiks_line
 
-        AddiksDBGPApp.AddiksDBGPApp.get().set_breakpoint_condition(filePath, line, None)
+        self._plugin.set_breakpoint_condition(filePath, line, None)
         menuBreakpoints.addiks_gutter.queue_draw() # force redraw
