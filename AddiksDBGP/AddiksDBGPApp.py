@@ -62,7 +62,14 @@ class AddiksDBGPApp(GObject.Object, Gedit.AppActivatable):
             item = Gio.MenuItem.new_submenu(_("Debugging"), submenu)
 
             mainMenu = self.app.get_menubar()
-            mainMenu.append_item(item)
+
+            if mainMenu != None:
+                mainMenu.append_item(item)
+
+            else:
+                # fallback when main-menu is not available: add to tools-menu
+                submenuExt = self.extend_menu("tools-section-1")
+                submenuExt.append_menu_item(item)
 
             for actionName, title, shortcut, callbackName in ACTIONS:
                 if callbackName != None:
@@ -162,10 +169,10 @@ class AddiksDBGPApp(GObject.Object, Gedit.AppActivatable):
 
         if not success:
             dialog = Gtk.MessageDialog(
-                None, 
-                None, 
-                Gtk.MessageType.ERROR, 
-                Gtk.ButtonsType.CLOSE, 
+                None,
+                None,
+                Gtk.MessageType.ERROR,
+                Gtk.ButtonsType.CLOSE,
                 message)
             dialog.connect("response", lambda a, b, c=None: dialog.destroy());
             dialog.run()
@@ -501,4 +508,3 @@ class AddiksDBGPApp(GObject.Object, Gedit.AppActivatable):
         self._glade_builder.add_from_file(os.path.dirname(__file__)+"/../addiks-dbgp.glade")
         self._glade_handler = GladeHandler(self, self._glade_builder)
         self._glade_builder.connect_signals(self._glade_handler)
-
