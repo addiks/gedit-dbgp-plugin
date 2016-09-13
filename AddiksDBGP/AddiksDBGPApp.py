@@ -68,8 +68,8 @@ class AddiksDBGPApp(GObject.Object, Gedit.AppActivatable):
 
             else:
                 # fallback when main-menu is not available: add to tools-menu
-                submenuExt = self.extend_menu("tools-section-1")
-                submenuExt.append_menu_item(item)
+                self.submenuExt = self.extend_menu("tools-section-1")
+                self.submenuExt.append_menu_item(item)
 
             for actionName, title, shortcut, callbackName in ACTIONS:
                 if callbackName != None:
