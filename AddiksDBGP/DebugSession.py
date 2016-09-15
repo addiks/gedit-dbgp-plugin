@@ -68,12 +68,12 @@ class DebugSession:
     def init(self):
 
 #<?xml version="1.0" encoding="iso-8859-1"?>
-#<init xmlns="urn:debugger_protocol_v1" 
-#      xmlns:xdebug="http://xdebug.org/dbgp/xdebug" 
-#      fileuri="file:///usr/workspace/api.brille24.de/web/app.php" 
-#      language="PHP" 
-#      protocol_version="1.0" 
-#      appid="22855" 
+#<init xmlns="urn:debugger_protocol_v1"
+#      xmlns:xdebug="http://xdebug.org/dbgp/xdebug"
+#      fileuri="file:///usr/workspace/api.brille24.de/web/app.php"
+#      language="PHP"
+#      protocol_version="1.0"
+#      appid="22855"
 #      idekey="TEST">
 #  <engine version="2.2.3"><![CDATA[Xdebug]]></engine>
 #  <author><![CDATA[Derick Rethans]]></author>
@@ -115,6 +115,11 @@ class DebugSession:
         for filePath in breakpoints:
             for line in breakpoints[filePath]:
                 condition = breakpoints[filePath][line]
+
+                # Find remote file path.
+                if self._path_mapping != None:
+                    filePath = self._path_mapping.mapLocalToRemote(filePath)
+
                 self.set_breakpoint({
                     'filename':   filePath,
                     'lineno':     line,
@@ -164,7 +169,7 @@ class DebugSession:
         breakpoints = addiksdbgp.AddiksDBGPApp.get().get_all_breakpoints()
         for filePath in breakpoints:
             for line in breakpoints[filePath]:
-                if stack['filename'] == filePath and int(stack["lineno"]) == line:
+                if self.mapRemoteToLocalPath(stack['filename']) == filePath and int(stack["lineno"]) == line:
                     return True
         return False
 
@@ -729,7 +734,7 @@ class DebugSession:
         root = ElementTree.fromstring(xmlData)
 
         # make sure response and request are for the same transaction
-        if transactionId != None and 'transaction_id' in root.attrib: 
+        if transactionId != None and 'transaction_id' in root.attrib:
             if transactionId != int(root.attrib['transaction_id']):
                 #print("+++ Skipped packet because wrong transaction_id\n")
                 root = self.__read_xml_packet(transactionId)
@@ -754,8 +759,3 @@ class DebugSession:
         self._glade_builder.add_from_file(os.path.dirname(__file__)+"/../addiks-dbgp.glade")
         self._glade_handler = GladeHandler(self._plugin, self._glade_builder, session=self)
         self._glade_builder.connect_signals(self._glade_handler)
-
-
-
-
-
