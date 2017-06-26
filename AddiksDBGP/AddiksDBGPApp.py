@@ -14,6 +14,9 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+import gi
+gi.require_version('Notify', '0.7')
+
 import os
 import time
 import socket
@@ -302,6 +305,7 @@ class AddiksDBGPApp(GObject.Object, Gedit.AppActivatable):
         dbgpSocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         dbgpSocket.settimeout(0.5)
         address = (str(hostname), int(port))
+
         try:
             dbgpSocket.connect(address)
             dbgpSocket.send(bytes("proxyinit -p "+str(int(listenPort))+" -k "+ideKey+" -m 0\0", 'UTF-8'))
@@ -310,8 +314,10 @@ class AddiksDBGPApp(GObject.Object, Gedit.AppActivatable):
             if responseXml.attrib['success'] != "1":
                 errorMessage = responseXml[0][0].text
                 self.__show_dialog("Error registering with dbgp-Proxy "+repr(address)+": "+errorMessage)
+
         except ConnectionRefusedError:
             self.__show_dialog("Error connecting to dbgp-Proxy "+repr(address)+": Connection refused!")
+
         except (TimeoutError, socket.timeout):
             self.__show_dialog("Error connecting to dbgp-Proxy "+repr(address)+": Timeout!")
 
@@ -323,16 +329,26 @@ class AddiksDBGPApp(GObject.Object, Gedit.AppActivatable):
             try:
                 dbgpSocket.connect(address)
                 packetData = "proxyinit -p "+str(int(listenPort))+" -k "+ideKey+" -m 0\0"
-                dbgpSocket.send(bytes(str(len(packetData)) + "\0" + packetData), 'UTF-8')
+                packetData = str(len(packetData)) + "\0" + packetData
+                packetData = bytes(packetData, 'utf-8')
+                dbgpSocket.send(packetData)
                 responseXmlData = dbgpSocket.recv(1024).decode("utf-8")
                 responseXml = ElementTree.fromstring(responseXmlData)
                 if responseXml.attrib['success'] != "1":
                     errorMessage = responseXml[0][0].text
                     self.__show_dialog("Error registering with dbgp-Proxy "+repr(address)+": "+errorMessage)
+
             except ConnectionRefusedError:
-                self.__show_dialog("Error connecting to dbgp-Proxy "+repr(address)+": Connection refused!")
+                message = "Connection refused!"
+                self.__show_dialog("Error connecting to dbgp-Proxy "+repr(address)+": "+message)
+
             except (TimeoutError, socket.timeout):
-                self.__show_dialog("Error connecting to dbgp-Proxy "+repr(address)+": Timeout!")
+                message = "Timeout!"
+                self.__show_dialog("Error connecting to dbgp-Proxy "+repr(address)+": "+message)
+
+            except ElementTree.ParseError:
+                message = "Unexpected response from dbgp-proxy!"
+                self.__show_dialog("Error connecting to dbgp-Proxy "+repr(address)+": "+message)
 
     def dbgp_proxy_stop(self, ideKey):
         dbgpSocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
