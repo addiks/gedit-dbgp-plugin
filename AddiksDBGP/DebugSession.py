@@ -114,17 +114,21 @@ class DebugSession:
         breakpoints = addiksdbgp.AddiksDBGPApp.get().get_all_breakpoints()
         for filePath in breakpoints:
             for line in breakpoints[filePath]:
-                condition = breakpoints[filePath][line]
+                try:
+                    condition = breakpoints[filePath][line]
 
-                # Find remote file path.
-                if self._path_mapping != None:
-                    filePath = self._path_mapping.mapLocalToRemote(filePath)
+                    # Find remote file path.
+                    if self._path_mapping != None:
+                        filePath = self._path_mapping.mapLocalToRemote(filePath)
 
-                self.set_breakpoint({
-                    'filename':   filePath,
-                    'lineno':     line,
-                    'expression': condition,
-                })
+                    self.set_breakpoint({
+                        'filename':   filePath,
+                        'lineno':     line,
+                        'expression': condition,
+                    })
+
+                except KeyError:
+                    pass
 
         self.__send_command("step_into")
         GLib.idle_add(self.__show_window)
